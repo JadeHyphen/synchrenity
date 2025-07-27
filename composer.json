@@ -52,4 +52,8 @@
     },
     "minimum-stability": "stable",
     "prefer-stable": true
+  ,
+  "scripts": {
+    "optimize": "php bootstrap/cli.php optimize"
+  }
 }
