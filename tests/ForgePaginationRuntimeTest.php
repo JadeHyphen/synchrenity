@@ -9,7 +9,7 @@ require_once __DIR__ . '/../lib/Forge/Components/ForgePagination.php';
 
 class ForgePaginationRuntimeTest extends TestCase
 {
-    public function testPaginationRendersHtml()
+    public function testPaginationRendersHtml(): void
     {
         $data = range(1, 100);
         $page = 2;
