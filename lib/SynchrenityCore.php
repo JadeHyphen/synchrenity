@@ -135,7 +135,9 @@ class SynchrenityCore
             'plugin' => ['\Synchrenity\Plugin\SynchrenityPluginManager'],
             'i18n' => ['\Synchrenity\I18n\SynchrenityI18nManager'],
             'websocket' => ['\Synchrenity\WebSocket\SynchrenityWebSocketServer'],
-            'validator' => ['\Synchrenity\Validation\SynchrenityValidator']
+            'validator' => ['\Synchrenity\Validation\SynchrenityValidator'],
+            'apiRateLimiter' => ['\Synchrenity\API\SynchrenityApiRateLimiter'],
+            'oauth2Provider' => ['\Synchrenity\Auth\SynchrenityOAuth2Provider']
         ];
         foreach ($modules as $prop => $classes) {
             foreach ($classes as $class) {

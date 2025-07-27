@@ -1,3 +1,39 @@
+# Synchrenity API Rate Limiting & OAuth2 Integration
+
+## API Rate Limiting
+
+SynchrenityApiRateLimiter provides per-endpoint and per-role rate limiting with burst control and analytics.
+
+**Example Usage:**
+
+```php
+$rateLimiter = new \Synchrenity\API\SynchrenityApiRateLimiter(require __DIR__.'/config/api_rate_limits.php');
+$allowed = $rateLimiter->check($userId, $role, 'GET:/api/resource');
+if (!$allowed) {
+    // Handle rate limit exceeded
+}
+```
+
+## OAuth2 Provider
+
+SynchrenityOAuth2Provider supports secure OAuth2 authentication with state validation and PKCE.
+
+**Example Usage:**
+
+```php
+$oauth2 = new \Synchrenity\Auth\SynchrenityOAuth2Provider(require __DIR__.'/config/oauth2.php');
+$authUrl = $oauth2->getAuthUrl('google', $state, true); // PKCE enabled
+// Redirect user to $authUrl
+
+// On callback:
+$result = $oauth2->handleCallback('google', $_GET['code'], $_GET['state']);
+if (isset($result['error'])) {
+    // Handle error
+} else {
+    $token = $result['token'];
+    // Use token
+}
+```
 # Synchrenity Framework
 
 
