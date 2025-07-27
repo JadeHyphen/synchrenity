@@ -34,7 +34,7 @@ if (isset($result['error'])) {
     // Use token
 }
 ```
-# Synchrenity Framework
+# Synchrenity
 
 
 [![Synchrenity CI](https://github.com/JadeHyphen/synchrenity/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/JadeHyphen/synchrenity/actions/workflows/ci.yml)
