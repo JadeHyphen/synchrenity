@@ -5,9 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Coverage Status](https://coveralls.io/repos/github/your-org/synchrenity/badge.svg?branch=main)](https://coveralls.io/github/your-org/synchrenity?branch=main)
 
-**Synchrenity is a robust, powerful framework created with security, freedom, and fast development in mind.**
-
-Secure scalable PHP framework for building enterprise-grade applications with advanced features, extensibility, and developer productivity.
+Synchrenity is a scalable PHP framework for building enterprise-grade applications with advanced features, extensibility, and developer productivity.
 
 ---
 
