@@ -1,5 +1,6 @@
 <?php
 namespace Tests;
+use PHPUnit\Framework\TestCase;
 use Synchrenity\Http\SynchrenityRouter;
 
 require_once __DIR__ . '/../lib/Http/SynchrenityRouter.php';
@@ -13,8 +14,10 @@ class DummyRequest {
     }; }
 }
 
-class SynchrenityRouterRuntimeTest {
-    public static function run() {
+class SynchrenityRouterRuntimeTest extends TestCase
+{
+    public function testRouteMatchAndDispatch()
+    {
         $router = new SynchrenityRouter();
         $router->add('GET', '/test', function($req, $params) {
             return 'OK';
@@ -22,22 +25,10 @@ class SynchrenityRouterRuntimeTest {
 
         $request = new DummyRequest();
         list($route, $params) = $router->match($request);
-        if ($route && $route['path'] === '/test') {
-            echo "[PASS] Route matched\n";
-        } else {
-            echo "[FAIL] Route not matched\n";
-            exit(1);
-        }
+        $this->assertNotNull($route, 'Route should be matched');
+        $this->assertEquals('/test', $route['path'], 'Route path should be /test');
 
         $response = $router->dispatch($request);
-        if ($response === 'OK') {
-            echo "[PASS] Dispatch returned OK\n";
-        } else {
-            echo "[FAIL] Dispatch did not return OK\n";
-            exit(1);
-        }
+        $this->assertEquals('OK', $response, 'Dispatch should return OK');
     }
 }
-
-// Run the test
-SynchrenityRouterRuntimeTest::run();

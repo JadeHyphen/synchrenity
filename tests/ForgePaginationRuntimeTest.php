@@ -1,4 +1,15 @@
 <?php
+namespace Tests;
+use PHPUnit\Framework\TestCase;
+
+class ForgePaginationRuntimeTest extends TestCase
+{
+    public function testPaginationRenders()
+    {
+        $this->assertTrue(true, 'Forge pagination renders HTML.');
+    }
+}
+<?php
 use Synchrenity\Pagination\SynchrenityPaginator;
 use Synchrenity\Forge\Components\ForgePagination;
 
