@@ -3,7 +3,6 @@
 
 [![Build Status](https://github.com/JadeHyphen/synchrenity/actions/workflows/ci.yml/badge.svg)](https://github.com/JadeHyphen/synchrenity/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Codecov](https://codecov.io/gh/JadeHyphen/synchrenity/branch/main/graph/badge.svg)](https://codecov.io/gh/JadeHyphen/synchrenity)
 
 Synchrenity is a scalable PHP framework for building enterprise-grade applications with advanced features, extensibility, and developer productivity.
 
