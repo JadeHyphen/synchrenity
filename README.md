@@ -141,6 +141,15 @@ php synchrenity migrate
 php synchrenity seed
 ```
 
+### Application Bootstrap Example
+```php
+// In your application's bootstrap/app.php or public/index.php
+require_once __DIR__ . '/../vendor/autoload.php';
+$config = require_once __DIR__ . '/../config/app.php';
+$core = new \Synchrenity\SynchrenityCore($config);
+$core->handleRequest();
+```
+
 ### Migration & Seeder Example
 Create a migration in `database/migrations/`:
 ```php
