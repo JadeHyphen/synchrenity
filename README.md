@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="assets/synchrenity-logo.png" alt="Synchrenity Logo" width="250"/>
+  <img src="assets/synchrenityLogo.svg" alt="Synchrenity Logo" width="250"/>
 </p>
 # Synchrenity
 
