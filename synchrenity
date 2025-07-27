@@ -1,0 +1,33 @@
+
+<?php
+// Synchrenity CLI entry point
+// Usage: php synchrenity [command] [options]
+
+require_once __DIR__ . '/lib/Helpers/env.php';
+require_once __DIR__ . '/bootstrap/app.php';
+
+use Synchrenity\SynchrenityCore;
+use Synchrenity\SynchrenityKernel;
+
+// Load config and environment (customize as needed)
+$config = [];
+$env = [];
+if (file_exists(__DIR__ . '/config/app.php')) {
+    $config = require __DIR__ . '/config/app.php';
+}
+if (function_exists('synchrenity_env')) {
+    $env = synchrenity_env(__DIR__ . '/.env');
+}
+
+// Initialize core and kernel
+$core = new SynchrenityCore($config, $env);
+$kernel = new SynchrenityKernel();
+$core->setCliKernel($kernel);
+
+// Parse command-line arguments
+$args = $_SERVER['argv'] ?? [];
+array_shift($args); // Remove script name
+
+// Run the CLI command
+$status = $core->runCli($args);
+exit($status);

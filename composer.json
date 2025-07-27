@@ -1,0 +1,42 @@
+{
+    "name": "synchrenity/framework",
+    "description": "Synchrenity PHP Framework: Secure, robust, and modern PHP application framework.",
+    "type": "project",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Your Name",
+            "email": "your@email.com",
+            "role": "Lead Developer"
+        }
+    ],
+    "require": {
+        "php": ">=8.1",
+        "ext-json": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10.0",
+        "friendsofphp/php-cs-fixer": "^3.0",
+        "phpstan/phpstan": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Synchrenity\\": "lib/"
+        },
+        "files": [
+            "lib/Helpers/env.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Tests\\": "tests/"
+        }
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true,
+        "allow-plugins": true
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true
+}
