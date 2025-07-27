@@ -15,6 +15,8 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.1'
+      - name: Clear composer cache
+        run: composer clear-cache
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress --no-suggest
       - name: Run tests
