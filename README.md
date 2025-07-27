@@ -269,7 +269,7 @@ MIT
 ---
 
 ## Release Info
-- Current version: `1.0.0`
+- Current version: `2.0.0`
 - See [Releases](https://github.com/your-org/synchrenity/releases) for changelog and updates.
 
 ---
