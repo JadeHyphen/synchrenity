@@ -1,4 +1,5 @@
 <?php
+namespace Tests;
 use Synchrenity\Http\SynchrenityRouter;
 
 require_once __DIR__ . '/../lib/Http/SynchrenityRouter.php';
@@ -12,24 +13,31 @@ class DummyRequest {
     }; }
 }
 
-$router = new SynchrenityRouter();
-$router->add('GET', '/test', function($req, $params) {
-    return 'OK';
-}, [], 'test_route', ['id' => '\d+']);
+class SynchrenityRouterRuntimeTest {
+    public static function run() {
+        $router = new SynchrenityRouter();
+        $router->add('GET', '/test', function($req, $params) {
+            return 'OK';
+        }, [], 'test_route', ['id' => '\d+']);
 
-$request = new DummyRequest();
-list($route, $params) = $router->match($request);
-if ($route && $route['path'] === '/test') {
-    echo "[PASS] Route matched\n";
-} else {
-    echo "[FAIL] Route not matched\n";
-    exit(1);
+        $request = new DummyRequest();
+        list($route, $params) = $router->match($request);
+        if ($route && $route['path'] === '/test') {
+            echo "[PASS] Route matched\n";
+        } else {
+            echo "[FAIL] Route not matched\n";
+            exit(1);
+        }
+
+        $response = $router->dispatch($request);
+        if ($response === 'OK') {
+            echo "[PASS] Dispatch returned OK\n";
+        } else {
+            echo "[FAIL] Dispatch did not return OK\n";
+            exit(1);
+        }
+    }
 }
 
-$response = $router->dispatch($request);
-if ($response === 'OK') {
-    echo "[PASS] Dispatch returned OK\n";
-} else {
-    echo "[FAIL] Dispatch did not return OK\n";
-    exit(1);
-}
+// Run the test
+SynchrenityRouterRuntimeTest::run();

@@ -1,4 +1,5 @@
 <?php
+namespace Tests;
 // Example unit test for Synchrenity
 use PHPUnit\Framework\TestCase;
 
