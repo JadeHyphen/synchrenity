@@ -6,3 +6,10 @@
         </testsuite>
     </testsuites>
 </phpunit>
+    <filter>
+        <whitelist>
+            <directory suffix=".php">app/</directory>
+        </whitelist>
+    </filter>
+</phpunit>
+</phpunit>
