@@ -64,7 +64,7 @@ See [API Documentation](docs/API.md) and [Usage Guide](docs/USAGE_GUIDE.md) for 
 
 1. **Clone the repository:**
    ```sh
-   git clone https://github.com/your-org/synchrenity.git
+   git clone https://github.com/JadeHyphen/synchrenity.git
    cd synchrenity
    ```
 2. **Install dependencies:**
@@ -238,8 +238,8 @@ MIT
 
 ## Community & Support
 - [Discord](https://discord.gg/your-synchrenity)
-- [Discussions](https://github.com/your-org/synchrenity/discussions)
-- [Issues](https://github.com/your-org/synchrenity/issues)
+- [Discussions](https://github.com/JadeHyphen/synchrenity/discussions)
+- [Issues](https://github.com/JadeHyphen/synchrenity/issues)
 
 ---
 
@@ -254,12 +254,9 @@ MIT
 
 ## Release Info
 - Current version: `2.0.0`
-- See [Releases](https://github.com/your-org/synchrenity/releases) for changelog and updates.
+- See [Releases](https://github.com/JadeHyphen/synchrenity/releases) for changelog and updates.
 
 ---
 
 ## Credits
 - Synchrenity was founded by Jade Monathrae Lewis
-- Synchrenity core team
-- Contributors: see [GitHub Contributors](https://github.com/your-org/synchrenity/graphs/contributors)
-- Special thanks to the PHP and open source community
