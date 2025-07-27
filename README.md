@@ -1,9 +1,9 @@
 # Synchrenity Framework
 
 
-[![Build Status](https://github.com/your-org/synchrenity/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/synchrenity/actions)
+[![Build Status](https://github.com/JadeHyphen/synchrenity/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/synchrenity/actions)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Coverage Status](https://coveralls.io/repos/github/your-org/synchrenity/badge.svg?branch=main)](https://coveralls.io/github/your-org/synchrenity?branch=main)
+[![Coverage Status](https://coveralls.io/repos/github/JadeHyphen/synchrenity/badge.svg?branch=main)](https://coveralls.io/github/your-org/synchrenity?branch=main)
 
 Synchrenity is a scalable PHP framework for building enterprise-grade applications with advanced features, extensibility, and developer productivity.
 
