@@ -54,6 +54,7 @@
     "prefer-stable": true,
     "scripts": {
         "optimize": "php synchrenity optimize",
+        "version-bump": "php synchrenity version bump",
         "post-install-cmd": [
             "@optimize"
         ],
@@ -66,5 +67,6 @@
     },
     "bin": [
         "synchrenity"
-    ]
+    ],
+    "version": "1.0.0"
 }
