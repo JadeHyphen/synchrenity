@@ -64,6 +64,7 @@
         "post-validate-cmd": [
             "@optimize"
         ]
+        
     },
     "bin": [
         "synchrenity"

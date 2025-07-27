@@ -42,6 +42,6 @@ yarn-error.log    # Yarn error logs
 coverage/
 
 # Misc: Other files that should not be tracked.
-composer.lock     # Composer lock file (optional, ignore if you want reproducible builds)
+## composer.lock     # Composer lock file (optional, ignore if you want reproducible builds)
 *.log             # Any log file
 *.cache           # Any cache file

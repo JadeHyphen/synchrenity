@@ -49,6 +49,71 @@ class SynchrenityCore
     protected $cliKernel;
 
     /**
+     * Audit trail instance
+     */
+    protected $auditTrail;
+
+    // Module properties for audit injection
+    public $auth;
+    public $queue;
+    public $notifier;
+    public $media;
+    public $cache;
+    public $rateLimiter;
+    public $tenant;
+    public $plugin;
+    public $i18n;
+    public $websocket;
+    public $validator;
+    protected $modules = [];
+    protected $lifecycleHooks = [ 'boot' => [], 'shutdown' => [] ];
+
+    /**
+     * Register a module dynamically
+     */
+    public function registerModule($name, $instance) {
+        $this->modules[$name] = $instance;
+        if (method_exists($instance, 'setAuditTrail')) {
+            $instance->setAuditTrail($this->auditTrail);
+        }
+        $this->$name = $instance;
+    }
+
+    /**
+     * Get a registered module
+     */
+    public function getModule($name) {
+        return $this->modules[$name] ?? null;
+    }
+
+    /**
+     * Register a lifecycle hook (boot, shutdown)
+     */
+    public function onLifecycle($event, callable $hook) {
+        if (isset($this->lifecycleHooks[$event])) {
+            $this->lifecycleHooks[$event][] = $hook;
+        }
+    }
+
+    /**
+     * Run lifecycle hooks
+     */
+    protected function runLifecycleHook($event) {
+        if (!empty($this->lifecycleHooks[$event])) {
+            foreach ($this->lifecycleHooks[$event] as $hook) {
+                call_user_func($hook, $this);
+            }
+        }
+    }
+
+    /**
+     * Shutdown the framework (run shutdown hooks)
+     */
+    public function shutdown() {
+        $this->runLifecycleHook('shutdown');
+    }
+
+    /**
      * Initialize the core with configuration and environment
      */
     public function __construct(array $config = [], array $env = [])
@@ -56,6 +121,42 @@ class SynchrenityCore
         $this->config = $config;
         $this->env = $env;
         $this->setupErrorHandling();
+        $this->auditTrail = new \Synchrenity\Audit\SynchrenityAuditTrail();
+
+        // Automated audit injection for all major modules
+        $modules = [
+            'auth' => ['\Synchrenity\Auth\SynchrenityAuth'],
+            'queue' => ['\Synchrenity\Queue\SynchrenityJobQueue'],
+            'notifier' => ['\Synchrenity\Notification\SynchrenityNotifier'],
+            'media' => ['\Synchrenity\Media\SynchrenityMediaManager'],
+            'cache' => ['\Synchrenity\Cache\SynchrenityCacheManager'],
+            'rateLimiter' => ['\Synchrenity\RateLimit\SynchrenityRateLimiter'],
+            'tenant' => ['\Synchrenity\Tenant\SynchrenityTenantManager'],
+            'plugin' => ['\Synchrenity\Plugin\SynchrenityPluginManager'],
+            'i18n' => ['\Synchrenity\I18n\SynchrenityI18nManager'],
+            'websocket' => ['\Synchrenity\WebSocket\SynchrenityWebSocketServer'],
+            'validator' => ['\Synchrenity\Validation\SynchrenityValidator']
+        ];
+        foreach ($modules as $prop => $classes) {
+            foreach ($classes as $class) {
+                if (class_exists($class)) {
+                    $this->$prop = new $class();
+                    if (method_exists($this->$prop, 'setAuditTrail')) {
+                        $this->$prop->setAuditTrail($this->auditTrail);
+                    }
+                    $this->modules[$prop] = $this->$prop;
+                }
+            }
+        }
+        $this->runLifecycleHook('boot');
+    }
+
+    /**
+     * Get the audit trail instance
+     */
+    public function audit()
+    {
+        return $this->auditTrail;
     }
 
     /**
@@ -243,4 +344,5 @@ class SynchrenityCore
         $colorCode = $colors[$color] ?? $colors['default'];
         echo $colorCode . $text . $colors['default'];
     }
+
 }

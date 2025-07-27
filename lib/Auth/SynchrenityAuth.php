@@ -14,9 +14,17 @@ class SynchrenityAuth
     protected $session;
     protected $errors = [];
     protected $events = [];
-    // Stub for audit method
-    protected function audit($action, $userId) {
-        // Implement audit logic or leave as stub
+    // Audit trail instance (should be injected or set from SynchrenityCore)
+    protected $auditTrail;
+
+    public function setAuditTrail($auditTrail) {
+        $this->auditTrail = $auditTrail;
+    }
+
+    protected function audit($action, $userId, $meta = []) {
+        if ($this->auditTrail) {
+            $this->auditTrail->log($action, [], $userId, $meta);
+        }
     }
     /**
      * Production-grade TOTP verification (MFA/2FA)
