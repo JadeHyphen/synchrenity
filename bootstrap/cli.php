@@ -1,18 +1,15 @@
 <?php
 // bootstrap/cli.php
 
+
 require_once __DIR__ . '/../vendor/autoload.php';
 
 // Load configuration if needed
 $config = file_exists(__DIR__ . '/../config/app.php') ? require __DIR__ . '/../config/app.php' : [];
 
-// Initialize CLI kernel
+// Initialize CLI kernel (auto-discovers all commands)
 $kernel = new \Synchrenity\SynchrenityKernel();
 
-// Register built-in and custom commands
-$kernel->register(new \Synchrenity\Console\SynchrenityOptimizeCommand($kernel));
-// Add other commands here as needed
-
 // Run the CLI command
-$args = $argv ?? [];
+$args = array_slice($argv ?? [], 1);
 exit($kernel->handle($args));
