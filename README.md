@@ -29,13 +29,8 @@ $authUrl = $oauth2->getAuthUrl('google', $state, true); // PKCE enabled
 $result = $oauth2->handleCallback('google', $_GET['code'], $_GET['state']);
 if (isset($result['error'])) {
     // Handle error
-} else {
-    $token = $result['token'];
-    // Use token
-}
-```
-# Synchrenity
 
+}
 
 [![Synchrenity CI](https://github.com/JadeHyphen/synchrenity/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/JadeHyphen/synchrenity/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
@@ -43,19 +38,8 @@ if (isset($result['error'])) {
 Synchrenity is a scalable PHP framework for building enterprise-grade applications with advanced features, extensibility, and developer productivity.
 
 ---
-
-## Table of Contents
-- [Features](#features)
-- [Quick Start](#quick-start)
-- [Directory Structure](#directory-structure)
-- [Core Concepts](#core-concepts)
-- [Usage Examples](#usage-examples)
-- [Testing](#testing)
 - [Deployment](#deployment)
 - [Enterprise Readiness](#enterprise-readiness)
-- [Contributing](#contributing)
-- [License](#license)
-- [Documentation](#documentation)
 - [Community & Support](#community--support)
 - [Troubleshooting & FAQ](#troubleshooting--faq)
 - [Release Info](#release-info)
