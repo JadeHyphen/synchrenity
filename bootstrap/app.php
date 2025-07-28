@@ -11,6 +11,9 @@ require_once __DIR__ . '/../vendor/autoload.php';
 // Load environment variable helper and .env support
 require_once __DIR__ . '/../lib/Helpers/env.php';
 
+// Load Synchrenity service container and facades automatically
+require_once __DIR__ . '/../config/services.php';
+
 // Load application configuration settings
 $config = require_once __DIR__ . '/../config/app.php';
 
