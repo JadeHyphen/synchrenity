@@ -70,20 +70,10 @@
     "prefer-stable": true,
     "scripts": {
         "optimize": "php synchrenity optimize",
-        "version-bump": "php synchrenity version bump",
-        "post-install-cmd": [
-            "@optimize"
-        ],
-        "post-update-cmd": [
-            "@optimize"
-        ],
-        "post-validate-cmd": [
-            "@optimize"
-        ]
-        
+        "version-bump": "php synchrenity version bump"
     },
     "bin": [
         "synchrenity"
     ],
-    "version": "2.1.0"
+    "version": "2.2.0"
 }
