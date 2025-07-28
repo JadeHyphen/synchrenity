@@ -333,3 +333,37 @@ MIT
 
 ## Credits
 - Synchrenity was founded by Jade Monathrae Lewis
+
+## Authorization Policies
+
+Synchrenity provides a robust and secure Policy system for fine-grained authorization:
+
+**Register a Policy:**
+
+```php
+$container->get('policy')->register(User::class, UserPolicy::class);
+```
+
+**Define a Policy:**
+
+```php
+use Synchrenity\Security\Policy;
+
+class UserPolicy extends Policy {
+    public function update($user, $targetUser) {
+        return $user->id === $targetUser->id;
+    }
+}
+```
+
+**Authorize an Action:**
+
+```php
+if ($container->get('policy')->authorize('update', User::class, $targetUser)) {
+    // Allowed
+} else {
+    // Denied
+}
+```
+
+You can override the `before` method in your policy to grant all abilities to certain users (e.g., super admin).

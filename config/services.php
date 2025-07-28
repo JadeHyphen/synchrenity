@@ -16,6 +16,9 @@ $synchrenityContainer->register('atlas', function($container) {
     // If you have a SynchrenityAtlas class, use it here. Otherwise, use Atlas facade directly.
     return new Atlas();
 });
+$synchrenityContainer->singleton('policy', function() {
+    return new \Synchrenity\Security\PolicyManager();
+});
 
 // Set container for facades
 Auth::setContainer($synchrenityContainer);
