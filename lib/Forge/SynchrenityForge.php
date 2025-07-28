@@ -31,8 +31,12 @@ class SynchrenityForge
     {
         $this->variables = $data;
         $template = $this->loadTemplate($view);
-        $compiled = $this->compile($template);
-        return $this->evaluate($compiled, $data);
+        try {
+            $compiled = $this->compile($template);
+            return $this->evaluate($compiled, $data);
+        } catch (\Throwable $e) {
+            return $this->formatError($e, $template);
+        }
     }
 
     protected function loadTemplate($view)
@@ -46,11 +50,75 @@ class SynchrenityForge
 
     protected function compile($template)
     {
-        // Parse directives, components, slots, filters, etc.
-        // Example: Replace {{ var }} with PHP echo, handle @if/@foreach, etc.
-        $compiled = preg_replace('/{{\s*(.+?)\s*}}/', '<?php echo htmlspecialchars($1); ?>', $template);
-        // Add more advanced parsing here...
+        // Parse {% ... %} tags
+        $compiled = preg_replace_callback('/\{\%\s*(set|if|for|include|layout)\s+(.+?)\s*\%\}/', function($m) {
+            switch ($m[1]) {
+                case 'set':
+                    return '<?php ' . $m[2] . '; ?>';
+                case 'if':
+                    return '<?php if (' . $m[2] . '): ?>';
+                case 'for':
+                    return '<?php foreach (' . $m[2] . '): ?>';
+                case 'include':
+                    return '<?php echo $this->render(' . var_export(trim($m[2], "'\""), true) . ', get_defined_vars()); ?>';
+                case 'layout':
+                    // Layouts can be handled by a custom mechanism
+                    return '<?php /* layout: ' . $m[2] . ' */ ?>';
+            }
+            return $m[0];
+        }, $template);
+
+        // End tags
+        $compiled = preg_replace('/\{\%\s*endif\s*\%\}/', '<?php endif; ?>', $compiled);
+        $compiled = preg_replace('/\{\%\s*endfor\s*\%\}/', '<?php endforeach; ?>', $compiled);
+
+        // Parse {{ var|filter }} and {{ var }}
+        $compiled = preg_replace_callback('/\{\{\s*(.+?)\s*\}\}/', function($m) {
+            $expr = $m[1];
+            if (strpos($expr, '|') !== false) {
+                list($var, $filter) = array_map('trim', explode('|', $expr, 2));
+                return '<?php echo $this->applyFilter(' . var_export($filter, true) . ', ' . $var . '); ?>';
+            }
+            // Default: escape output
+            return '<?php echo htmlspecialchars(' . $expr . ', ENT_QUOTES, "UTF-8"); ?>';
+        }, $compiled);
+
+        // Parse components/partials: {% component 'name' %}
+        $compiled = preg_replace_callback('/\{\%\s*component\s+([\'\"])(.+?)\1\s*\%\}/', function($m) {
+            return '<?php echo $this->renderComponent(' . var_export($m[2], true) . ', get_defined_vars()); ?>';
+        }, $compiled);
+
         return $compiled;
+    }
+    protected function applyFilter($filter, $value)
+    {
+        if (isset($this->filters[$filter])) {
+            return call_user_func($this->filters[$filter], $value);
+        }
+        return $value;
+    }
+
+    protected function renderComponent($name, $data = [])
+    {
+        if (isset($this->components[$name])) {
+            return call_user_func($this->components[$name], $data);
+        }
+        return '';
+    }
+
+    protected function formatError($e, $template)
+    {
+        $lines = explode("\n", $template);
+        $msg = '<pre style="color:red;">Forge Error: ' . htmlspecialchars($e->getMessage()) . "\n";
+        if (method_exists($e, 'getLine')) {
+            $line = $e->getLine();
+            $msg .= 'Line: ' . $line . "\n";
+            if (isset($lines[$line-1])) {
+                $msg .= 'Context: ' . htmlspecialchars($lines[$line-2] ?? '') . "\n> " . htmlspecialchars($lines[$line-1]) . "\n" . htmlspecialchars($lines[$line] ?? '') . "\n";
+            }
+        }
+        $msg .= '</pre>';
+        return $msg;
     }
 
     protected function evaluate($compiled, $data)

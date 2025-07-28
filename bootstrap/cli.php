@@ -31,8 +31,14 @@ if (isset($argv[1]) && $argv[1] === 'version') {
 $config = file_exists(__DIR__ . '/../config/app.php') ? require __DIR__ . '/../config/app.php' : [];
 
 // Initialize CLI kernel (auto-discovers all commands)
-$kernel = new \Synchrenity\SynchrenityKernel();
 
-// Run the CLI command
-$args = array_slice($argv ?? [], 1);
-exit($kernel->handle($args));
+// Fallback: Use SynchrenityCli if SynchrenityKernel is not available
+if (class_exists('Synchrenity\\Dev\\SynchrenityCli')) {
+    $cli = new \Synchrenity\Dev\SynchrenityCli();
+    $cli->registerCoreCommands();
+    $cli->run($argv);
+    exit(0);
+} else {
+    echo "No CLI kernel or SynchrenityCli found.\n";
+    exit(1);
+}
