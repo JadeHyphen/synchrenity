@@ -3,7 +3,7 @@
 
 namespace Synchrenity\Security;
 
-class Policy
+class SynchrenityPolicy
 {
     /**
      * Called before any ability check. Override to grant/deny all abilities for a user.
@@ -24,7 +24,7 @@ class Policy
     }
 }
 
-class PolicyManager
+class SynchrenityPolicyManager
 {
     protected $policies = [];
     protected $userResolver;
@@ -39,19 +39,38 @@ class PolicyManager
 
     /**
      * Register a policy for a model/class.
+     * Policy class must be named {ModelName}Policy by convention.
      */
-    public function register($model, $policyClass)
+    public function register($model, $policyClass = null)
     {
+        if ($policyClass === null) {
+            // Guess policy class name by convention
+            if (is_object($model)) {
+                $model = get_class($model);
+            }
+            $base = is_string($model) ? (substr(strrchr($model, '\\'), 1) ?: $model) : $model;
+            $policyClass = $base . 'Policy';
+            if (class_exists('App\\Policies\\' . $policyClass)) {
+                $policyClass = 'App\\Policies\\' . $policyClass;
+            } elseif (class_exists('Synchrenity\\Policies\\' . $policyClass)) {
+                $policyClass = 'Synchrenity\\Policies\\' . $policyClass;
+            }
+        }
         $this->policies[$model] = $policyClass;
     }
 
     /**
      * Register multiple policies at once.
+     * Accepts [ModelClass => PolicyClass] or [ModelClass] (uses convention).
      */
     public function registerMany(array $map)
     {
         foreach ($map as $model => $policy) {
-            $this->register($model, $policy);
+            if (is_int($model)) {
+                $this->register($policy);
+            } else {
+                $this->register($model, $policy);
+            }
         }
     }
 

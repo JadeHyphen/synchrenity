@@ -17,7 +17,7 @@ $synchrenityContainer->register('atlas', function($container) {
     return new Atlas();
 });
 $synchrenityContainer->singleton('policy', function() {
-    return new \Synchrenity\Security\PolicyManager();
+    return new \Synchrenity\Security\SynchrenityPolicyManager();
 });
 
 // Set container for facades
