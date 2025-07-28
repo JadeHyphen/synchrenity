@@ -43,6 +43,8 @@
         },
         "files": [
             "lib/Helpers/env.php",
+            "lib/Helpers/array.php",
+            "lib/Helpers/string.php",
             "lib/Support/SynchrenityServiceContainer.php"
         ]
     },
