@@ -29,6 +29,14 @@ class SynchrenityRouterRuntimeTest extends TestCase
         $this->assertEquals('/test', $route['path'], 'Route path should be /test');
 
         $response = $router->dispatch($request);
-        $this->assertEquals('OK', $response, 'Dispatch should return OK');
+        // Handle both string and SynchrenityResponse object
+        if (is_object($response) && method_exists($response, '__toString')) {
+            $responseStr = (string)$response;
+            $this->assertEquals('OK', $responseStr, 'Dispatch should return OK as string');
+        } elseif (is_object($response) && property_exists($response, 'body')) {
+            $this->assertEquals('OK', $response->body, 'Dispatch should return OK in response body');
+        } else {
+            $this->assertEquals('OK', $response, 'Dispatch should return OK');
+        }
     }
 }
