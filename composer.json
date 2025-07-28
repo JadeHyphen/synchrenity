@@ -1,6 +1,14 @@
 {
     "name": "synchrenity/framework",
     "description": "Synchrenity PHP Framework: Secure, robust, and modern PHP application framework.",
+    "keywords" : [
+        "framework",
+        "php",
+        "synchrenity",
+        "modern",
+        "secure",
+        "robust"
+    ],
     "type": "project",
     "license": "MIT",
     "authors": [
