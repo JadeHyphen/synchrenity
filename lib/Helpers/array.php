@@ -77,7 +77,7 @@ if (!function_exists('array_pluck')) {
 }
 
 if (!function_exists('array_first')) {
-    function array_first(array $array, callable $callback = null, $default = null) {
+    function array_first(array $array, ?callable $callback = null, $default = null) {
         foreach ($array as $key => $value) {
             if ($callback === null || $callback($value, $key)) {
                 return $value;
@@ -88,7 +88,7 @@ if (!function_exists('array_first')) {
 }
 
 if (!function_exists('array_last')) {
-    function array_last(array $array, callable $callback = null, $default = null) {
+    function array_last(array $array, ?callable $callback = null, $default = null) {
         $reversed = array_reverse($array, true);
         foreach ($reversed as $key => $value) {
             if ($callback === null || $callback($value, $key)) {
