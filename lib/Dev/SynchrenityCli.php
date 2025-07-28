@@ -44,13 +44,13 @@ class SynchrenityCli {
     }
 
     public function printHelp() {
-        echo "\033[36mSynchrenity CLI\033[0m\n";
-        echo "Usage: php synchrenity <command> [args]\n\n";
-        echo "Available commands:\n";
+        echo "\033[36;1mSynchrenity CLI\033[0m\n";
+        echo "\033[37mUsage: php synchrenity \033[33m<command>\033[0m \033[35m[args]\033[0m\n\n";
+        echo "\033[37;1mAvailable commands:\033[0m\n";
         foreach ($this->commands as $name => $info) {
-            echo "  \033[32m$name\033[0m\t" . ($info['description'] ?? '') . "\n";
+            echo "  \033[32;1m$name\033[0m\t\033[90m" . ($info['description'] ?? '') . "\033[0m\n";
         }
-        echo "\nUse 'php synchrenity help' for this message, or 'php synchrenity version' for version info.\n";
+        echo "\n\033[36mUse '\033[33mphp synchrenity help\033[36m' for this message, or '\033[33mphp synchrenity version\033[36m' for version info.\033[0m\n";
     }
 
     public function printError($msg) {
@@ -111,6 +111,44 @@ class SynchrenityCli {
             return 0;
         }, 'Scaffold a new model');
 
+        $this->register('optimize', function($args) {
+            // Step 1: Composer autoloader optimization
+            echo "\033[36;1m[Synchrenity]\033[0m \033[33mOptimizing Composer autoloader...\033[0m\n";
+            $output = [];
+            $result = 0;
+            exec('composer dump-autoload -o 2>&1', $output, $result);
+            foreach ($output as $line) {
+                echo "  \033[90m$line\033[0m\n";
+            }
+            if ($result === 0) {
+                echo "\033[32m[Synchrenity] Autoloader optimized successfully.\033[0m\n";
+            } else {
+                echo "\033[31m[Synchrenity] Autoloader optimization failed.\033[0m\n";
+            }
+
+            // Step 2: Clear cache (example: remove cache files/dirs)
+            $cacheDir = __DIR__ . '/../../cache';
+            if (is_dir($cacheDir)) {
+                echo "\033[36;1m[Synchrenity]\033[0m \033[33mClearing cache...\033[0m\n";
+                $files = new \RecursiveIteratorIterator(
+                    new \RecursiveDirectoryIterator($cacheDir, \FilesystemIterator::SKIP_DOTS),
+                    \RecursiveIteratorIterator::CHILD_FIRST
+                );
+                foreach ($files as $fileinfo) {
+                    $todo = ($fileinfo->isDir() ? 'rmdir' : 'unlink');
+                    $todo($fileinfo->getRealPath());
+                }
+                rmdir($cacheDir);
+                echo "\033[32m[Synchrenity] Cache cleared.\033[0m\n";
+            } else {
+                echo "\033[33m[Synchrenity] No cache directory to clear.\033[0m\n";
+            }
+
+            // Step 3: (Placeholder) Config cache, route cache, etc.
+            echo "\033[36;1m[Synchrenity]\033[0m \033[33mConfig and route cache not implemented yet.\033[0m\n";
+
+            return $result;
+        }, 'Optimize the Synchrenity framework (autoloader, cache, etc)');
         // Add more core commands as needed (migrations, modules, etc.)
     }
 }

@@ -1,8 +1,9 @@
 
+
 #!/usr/bin/env php
 <?php
-// Synchrenity CLI bin entry point
-// Usage:
-//   synchrenity version           # Show current version
-//   synchrenity version bump [major|minor|patch]  # Bump version and tag
-require_once __DIR__ . '/bootstrap/cli.php';
+require_once __DIR__ . '/lib/Dev/SynchrenityCli.php';
+use Synchrenity\Dev\SynchrenityCli;
+$cli = new SynchrenityCli();
+$cli->registerCoreCommands();
+exit($cli->run());
