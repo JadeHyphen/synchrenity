@@ -228,10 +228,35 @@ try {
     $errorHandler->report($e);
 }
 ```
+
 ### CLI
+
+Synchrenity features a robust, colorized CLI for developer productivity:
+
+- Colorized help and command output for clarity
+- Command suggestion for mistyped commands
+- Scaffolding commands: `make:controller`, `make:model`
+- `optimize` command: runs Composer autoloader optimization and clears cache
+
+**Usage:**
 ```sh
-php synchrenity migrate
-php synchrenity seed
+php synchrenity help         # Show colorized help and available commands
+php synchrenity make:controller UserController
+php synchrenity make:model User
+php synchrenity optimize    # Optimize autoloader and clear cache
+```
+
+**Example colorized help output:**
+```
+Synchrenity CLI
+Usage: php synchrenity <command> [args]
+
+Available commands:
+  make:controller   Scaffold a new controller
+  make:model        Scaffold a new model
+  optimize          Optimize the Synchrenity framework (autoloader, cache, etc)
+
+Use 'php synchrenity help' for this message, or 'php synchrenity version' for version info.
 ```
 
 ### Application Bootstrap Example
@@ -326,7 +351,7 @@ MIT
 ---
 
 ## Release Info
-- Current version: `2.0.0`
+- Current version: `2.2.0`
 - See [Releases](https://github.com/JadeHyphen/synchrenity/releases) for changelog and updates.
 
 ---
