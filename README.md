@@ -117,6 +117,75 @@ docs/               # Documentation and guides
 ---
 
 ## Usage Examples
+
+### Service Container & Facades
+
+Synchrenity provides a robust service container for automatic dependency injection and global facades for easy access to core services.
+
+**Registering Services:**
+```php
+$synchrenityContainer->register('auth', function($container) {
+    return new \Synchrenity\Auth\SynchrenityAuth();
+});
+$synchrenityContainer->singleton('logger', function($container) {
+    return new \Synchrenity\Support\SynchrenityLogger();
+});
+```
+
+**Using Facades:**
+```php
+$user = Auth::user();
+$table = Atlas::table('users');
+$logger = synchrenity('logger');
+$logger->info('User logged in', ['user_id' => $user->id]);
+```
+
+**Global Helpers:**
+```php
+auth()->impersonate($targetUserId);
+atlas()->table('posts')->find($id);
+```
+
+### Logger Usage Example
+
+SynchrenityLogger supports multi-channel logging and audit integration.
+
+```php
+$logger = synchrenity('logger');
+$logger->info('User registered', ['user_id' => $userId, 'channel' => 'app']);
+$logger->error('Failed login attempt', ['user_id' => $userId, 'channel' => 'security']);
+```
+
+### Audit Trail Integration
+
+Inject the audit trail into core services for compliance and monitoring.
+
+```php
+$auth = synchrenity('auth');
+$auditTrail = synchrenity('audit');
+$auth->setAuditTrail($auditTrail);
+```
+
+### Advanced Service Container Features
+
+- **Singletons:** `$container->singleton('service', fn($c) => new ServiceClass());`
+- **Aliases:** `$container->alias('db', 'atlas');`
+- **Contextual Bindings:** `$container->when(UserController::class, 'auth', fn($c) => new CustomAuth());`
+- **Deferred Loading:** `$container->defer('heavyService', fn($c) => new HeavyService());`
+- **Auto-wiring:** `$service = $container->make(ServiceClass::class);`
+
+### Example: Creating a Custom Service Provider
+
+```php
+class MyServiceProvider {
+    public function register($container) {
+        $container->singleton('myService', function($c) {
+            return new MyService();
+        });
+    }
+}
+$synchrenityContainer->registerProvider(new MyServiceProvider());
+```
 ### Routing
 ```php
 $router->add('GET', '/users', [UserController::class, 'index'], [AuthMiddleware::class], 'users_list');
