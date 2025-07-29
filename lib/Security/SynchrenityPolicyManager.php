@@ -46,7 +46,7 @@ class SynchrenityPolicyManager
     protected $denyCallback;
     protected $auditCallback;
 
-    public function __construct(callable $userResolver = null)
+    public function __construct(?callable $userResolver = null)
     {
         $this->userResolver = $userResolver;
     }

@@ -308,6 +308,8 @@ class SynchrenityCore
     public $i18n;
     public $websocket;
     public $validator;
+    public $apiRateLimiter;
+    public $oauth2Provider;
     protected $modules        = [];
     protected $lifecycleHooks = [ 'boot' => [], 'shutdown' => [] ];
 

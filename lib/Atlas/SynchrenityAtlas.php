@@ -44,7 +44,7 @@ class SynchrenityAtlas
 
     public static function query($connection, $table = null)
     {
-        return new static($connection, $table);
+        return new self($connection, $table);
     }
 
     public function find($id)

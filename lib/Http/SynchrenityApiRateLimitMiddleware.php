@@ -18,7 +18,7 @@ class SynchrenityApiRateLimitMiddleware
     protected $context = [];
     protected $policyResolver;
 
-    public function __construct($rateLimiter, callable $roleResolver = null, callable $policyResolver = null)
+    public function __construct($rateLimiter, ?callable $roleResolver = null, ?callable $policyResolver = null)
     {
         $this->rateLimiter    = $rateLimiter;
         $this->roleResolver   = $roleResolver;

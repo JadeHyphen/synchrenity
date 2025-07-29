@@ -35,7 +35,7 @@ jobs:
       - name: Clear composer cache
         run: composer clear-cache
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress 
+        run: composer install
       - name: Run code style checks (php-cs-fixer)
         run: vendor/bin/php-cs-fixer fix --dry-run --diff
       - name: Run static analysis (phpstan)
