@@ -23,16 +23,12 @@ jobs:
           coverage: none
       - name: Validate composer.json and composer.lock
         run: composer validate --strict
-        working-directory: ${{ github.workspace }}
       - name: Install dependencies
         run: composer install --no-interaction
-        working-directory: ${{ github.workspace }}
       - name: Clear PHP CS Fixer cache
         run: rm -f .php-cs-fixer.cache
-        working-directory: ${{ github.workspace }}
       - name: Run tests
         run: vendor/bin/phpunit --testdox
-        working-directory: ${{ github.workspace }}
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
