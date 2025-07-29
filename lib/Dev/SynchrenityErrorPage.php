@@ -110,7 +110,7 @@ class SynchrenityErrorPage
 
         for ($i = $start; $i < $end; $i++) {
             $highlight = ($i + 1 == $line) ? ' style="background: #ffe0e0;"' : '';
-            $html .= '<span' . $highlight . '>' . str_pad($i + 1, 4, ' ', STR_PAD_LEFT) . ': ' . htmlspecialchars(rtrim($lines[$i])) . "</span>\n";
+            $html .= '<span' . $highlight . '>' . str_pad((string)($i + 1), 4, ' ', STR_PAD_LEFT) . ': ' . htmlspecialchars(rtrim($lines[$i])) . "</span>\n";
         }
         $html .= '</pre></details>';
 
