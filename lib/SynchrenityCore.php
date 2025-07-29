@@ -300,18 +300,21 @@ class SynchrenityCore
 
     /**
      * Plugin manager module
+     *
      * @var mixed|null
      */
     public $pluginManager = null;
 
     /**
      * Health check module
+     *
      * @var mixed|null
      */
     public $health = null;
 
     /**
      * Test utilities module
+     *
      * @var mixed|null
      */
     public $testUtils = null;

@@ -37,6 +37,7 @@ class SynchrenityErrorHandler
     public function __construct($config = [], $mailer = null, $logger = null)
     {
         $this->logLevel = $config['logLevel'] ?? 'error';
+
         // Enable debug mode in test environment to suppress HTML output during tests
         if ((getenv('APP_ENV') === 'testing') || getenv('SYNCHRENITY_TESTING') === '1' || (isset($config['env']) && ($config['env'] === 'testing'))) {
             $this->debugMode = true;
