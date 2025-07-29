@@ -27,6 +27,9 @@ jobs:
       - name: Install dependencies
         run: composer install --no-interaction
         working-directory: ${{ github.workspace }}
+      - name: Clear PHP CS Fixer cache
+        run: rm -f .php-cs-fixer.cache
+        working-directory: ${{ github.workspace }}
       - name: Run tests
         run: vendor/bin/phpunit --testdox
         working-directory: ${{ github.workspace }}
