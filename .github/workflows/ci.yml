@@ -24,6 +24,8 @@ jobs:
           php-version: ${{ matrix.php-versions }}
           coverage: xdebug
           tools: composer:v2
+      - name: Debug: print PHP version
+        run: php -v
       - name: Validate composer.json and composer.lock
         run: composer validate --strict
       - name: Cache Composer dependencies
