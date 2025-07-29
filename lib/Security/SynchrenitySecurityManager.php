@@ -368,9 +368,16 @@ class SynchrenitySecurityManager
      */
     protected function triggerEventHook($event, $details = [])
     {
-        if (isset($this->eventHooks[$event])) {
-            foreach (array_filter($this->eventHooks[$event], 'is_callable') as $hook) {
-                $hook($details);
+        if (!isset($this->eventHooks[$event]) || !is_array($this->eventHooks[$event])) {
+            return;
+        }
+        foreach ($this->eventHooks[$event] as $hook) {
+            if (is_callable($hook)) {
+                try {
+                    $hook($details);
+                } catch (\Throwable $e) {
+                    // Optionally log or handle hook errors
+                }
             }
         }
     }

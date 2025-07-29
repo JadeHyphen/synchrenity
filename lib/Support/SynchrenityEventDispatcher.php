@@ -39,9 +39,9 @@ class SynchrenityEventDispatcher
         }
 
         if (!is_callable($listener)) {
-            throw new \InvalidArgumentException('Listener must be callable');
+            // Do not add non-callable listeners
+            return;
         }
-
         if (!isset($this->listeners[$event])) {
             $this->listeners[$event] = [];
         }
@@ -54,9 +54,9 @@ class SynchrenityEventDispatcher
     public function hook($type, callable $hook)
     {
         if (!is_callable($hook)) {
-            throw new \InvalidArgumentException('Hook must be callable');
+            // Do not add non-callable hooks
+            return;
         }
-
         if (!isset($this->hooks[$type])) {
             $this->hooks[$type] = [];
         }
@@ -74,9 +74,14 @@ class SynchrenityEventDispatcher
         }
 
         // Middleware validation/filtering
+        if (!is_array($this->middleware)) {
+            return false;
+        }
         foreach ($this->middleware as $mw) {
-            if ($mw($event, $payload, $context) === false) {
-                return false;
+            if (is_callable($mw)) {
+                if ($mw($event, $payload, $context) === false) {
+                    return false;
+                }
             }
         }
         // Audit log
@@ -86,11 +91,19 @@ class SynchrenityEventDispatcher
 
         // Dispatch listeners
         if (isset($this->listeners[$event])) {
-            foreach (array_filter($this->listeners[$event], 'is_callable') as $listener) {
-                try {
-                    $listener($payload, $context);
-                } catch (\Throwable $e) {
-                    $this->runHooks('error', $event, $payload, $context, $e);
+            foreach ($this->listeners[$event] as $listener) {
+                // Handle listeners registered via onPriority (array with 'listener' key)
+                if (is_array($listener) && isset($listener['listener'])) {
+                    $callable = $listener['listener'];
+                } else {
+                    $callable = $listener;
+                }
+                if (is_callable($callable)) {
+                    try {
+                        $callable($payload, $context);
+                    } catch (\Throwable $e) {
+                        $this->runHooks('error', $event, $payload, $context, $e);
+                    }
                 }
             }
         }
@@ -119,8 +132,10 @@ class SynchrenityEventDispatcher
     protected function runHooks($type, $event, $payload, $context, $error = null)
     {
         if (isset($this->hooks[$type])) {
-            foreach (array_filter($this->hooks[$type], 'is_callable') as $hook) {
-                $hook($event, $payload, $context, $error);
+            foreach ($this->hooks[$type] as $hook) {
+                if (is_callable($hook)) {
+                    call_user_func($hook, $event, $payload, $context, $error);
+                }
             }
         }
     }
