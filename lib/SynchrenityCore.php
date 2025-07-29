@@ -298,7 +298,6 @@ class SynchrenityCore
      * Audit trail instance
      */
 
-    
     /**
      * Plugin manager module
      *
@@ -306,7 +305,6 @@ class SynchrenityCore
      */
     public $pluginManager = null;
 
-    
     /**
      * Health check module
      *
@@ -314,7 +312,6 @@ class SynchrenityCore
      */
     public $health = null;
 
-    
     /**
      * Test utilities module
      *
