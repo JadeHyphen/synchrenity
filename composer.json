@@ -75,9 +75,6 @@
         "classmap-authoritative": true,
         "sort-packages": true,
         "allow-plugins": true,
-        "platform": {
-            "php": "8.3.0"
-        },
         "preferred-install": "dist",
         "lock": false,
         "apcu-autoloader": true
