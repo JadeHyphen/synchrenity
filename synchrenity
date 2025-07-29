@@ -2,8 +2,15 @@
 
 #!/usr/bin/env php
 <?php
-require_once __DIR__ . '/lib/Dev/SynchrenityCli.php';
-use Synchrenity\Dev\SynchrenityCli;
-$cli = new SynchrenityCli();
-$cli->registerCoreCommands();
-exit($cli->run());
+
+require_once __DIR__ . '/lib/SynchrenityKernel.php';
+require_once __DIR__ . '/lib/SynchrenityCommand.php';
+
+// Auto-load user commands
+foreach (glob(__DIR__ . '/commands/*.php') as $file) {
+    require_once $file;
+}
+
+$kernel = new \Synchrenity\SynchrenityKernel();
+$args = array_slice($argv, 1);
+exit($kernel->handle($args));
