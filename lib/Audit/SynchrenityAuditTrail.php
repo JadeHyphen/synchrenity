@@ -290,7 +290,6 @@ class SynchrenityAuditTrail
         foreach ($lines as $line) {
             $log = json_decode($line);
             $ts  = isset($log->timestamp) ? strtotime($log->timestamp) : false;
-
             if ($ts !== false && $ts >= $cutoff) {
                 $keep[] = $line;
             } else {
@@ -298,7 +297,6 @@ class SynchrenityAuditTrail
             }
         }
         file_put_contents($this->logFile, implode(PHP_EOL, $keep) . PHP_EOL);
-
         if ($archive) {
             file_put_contents($this->logFile . '.archive', implode(PHP_EOL, $archive) . PHP_EOL, FILE_APPEND | LOCK_EX);
         }
