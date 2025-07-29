@@ -203,7 +203,7 @@ class SynchrenityWeave
         $commentClose = preg_quote($this->commentClose, '/');
 
         // Parse {% ... %} tags, now with all advanced features
-        $compiled = preg_replace_callback('/' . $tagOpen + '\s*(set|if|for|include|layout|section|endsection|yield|stack|push|endpush|slot|endslot|macro|endmacro|callmacro|raw|endraw|asset|trans|inject|defer|enddefer|cspnonce|check|endcheck|export|import)\s*(.*?)\s*' + $tagClose . '/s', function ($m) {
+        $compiled = preg_replace_callback('/' . $tagOpen . '\s*(set|if|for|include|layout|section|endsection|yield|stack|push|endpush|slot|endslot|macro|endmacro|callmacro|raw|endraw|asset|trans|inject|defer|enddefer|cspnonce|check|endcheck|export|import)\s*(.*?)\s*' . $tagClose . '/s', function ($m) {
             switch ($m[1]) {
                 case 'inject':
                     return '<?php extract($this->injected, EXTR_SKIP); ?>';
@@ -237,11 +237,11 @@ class SynchrenityWeave
         }, $template);
 
         // End tags
-        $compiled = preg_replace('/' + $tagOpen + '\s*endif\s*' + $tagClose + '/', '<?php endif; ?>', $compiled);
-        $compiled = preg_replace('/' + $tagOpen + '\s*endfor\s*' + $tagClose + '/', '<?php endforeach; ?>', $compiled);
+        $compiled = preg_replace('/' . $tagOpen . '\s*endif\s*' . $tagClose . '/', '<?php endif; ?>', $compiled);
+        $compiled = preg_replace('/' . $tagOpen . '\s*endfor\s*' . $tagClose . '/', '<?php endforeach; ?>', $compiled);
 
         // Parse {{ var|filter|filter2 }} and {{ var }}
-        $compiled = preg_replace_callback('/' + $echoOpen + '\s*(.+?)\s*' + $echoClose + '/', function ($m) {
+        $compiled = preg_replace_callback('/' . $echoOpen . '\s*(.+?)\s*' . $echoClose . '/', function ($m) {
             $expr = $m[1];
 
             if (strpos($expr, '|') !== false) {
@@ -256,12 +256,14 @@ class SynchrenityWeave
                 return '<?php echo ' . $code . '; ?>';
             }
 
-            // Default: escape output
-            return '<?php echo htmlspecialchars(' . $expr . ', ENT_QUOTES, "UTF-8"); ?>';
+            // Default: escape output, but check if variable exists
+            // If variable is not set, output empty string to avoid undefined variable/constant warnings
+            $safeExpr = preg_replace('/^([a-zA-Z_][a-zA-Z0-9_]*)$/', '(isset($\1) ? $\1 : (isset($this->variables["\1"]) ? $this->variables["\1"] : ""))', $expr);
+            return '<?php echo htmlspecialchars(' . $safeExpr . ', ENT_QUOTES, "UTF-8"); ?>';
         }, $compiled);
 
         // Parse components/partials: {% component 'name' %}
-        $compiled = preg_replace_callback('/' + $tagOpen + '\s*component\s+([\'\"])(.+?)\1\s*' + $tagClose + '/', function ($m) {
+        $compiled = preg_replace_callback('/' . $tagOpen . '\s*component\s+([\'\"])(.+?)\1\s*' . $tagClose . '/', function ($m) {
             return '<?php echo $this->renderComponent(' . var_export($m[2], true) . ', get_defined_vars()); ?>';
         }, $compiled);
 
@@ -336,8 +338,15 @@ class SynchrenityWeave
     // Validation/linting
     public function validateTemplate($template)
     {
-        // Example: check for unclosed tags, etc.
-        return true;
+        $errors = [];
+        if (substr_count($template, $this->tagOpen) !== substr_count($template, $this->tagClose)) {
+            $errors[] = 'Unclosed tag detected.';
+        }
+        if (substr_count($template, $this->echoOpen) !== substr_count($template, $this->echoClose)) {
+            $errors[] = 'Unclosed echo detected.';
+        }
+        // Add more checks as needed
+        return empty($errors) ? true : $errors;
     }
 
     // Preprocessing
@@ -349,8 +358,20 @@ class SynchrenityWeave
     // Dynamic partial/component discovery
     public function discoverPartials()
     {
-        // Example: scan $this->templatePath/partials or $this->componentsDir
-        // and register found partials/components
+        // Robust partial/component discovery
+        $partialsDir = rtrim($this->templatePath, '/') . '/partials';
+        if (is_dir($partialsDir)) {
+            foreach (glob($partialsDir . '/*.weave.php') as $file) {
+                $name = basename($file, '.weave.php');
+                $this->partials[$name] = $file;
+            }
+        }
+        if ($this->componentsDir && is_dir($this->componentsDir)) {
+            foreach (glob($this->componentsDir . '/*.php') as $file) {
+                $name = basename($file, '.php');
+                $this->components[$name] = require $file;
+            }
+        }
     }
 
     // Versioning
@@ -479,16 +500,25 @@ class SynchrenityWeave
 
     public function directive($name, $handler)
     {
+        if (!is_string($name) || !is_callable($handler)) {
+            throw new \InvalidArgumentException('Directive name must be string and handler must be callable');
+        }
         $this->directives[$name] = $handler;
     }
 
     public function filter($name, $handler)
     {
+        if (!is_string($name) || !is_callable($handler)) {
+            throw new \InvalidArgumentException('Filter name must be string and handler must be callable');
+        }
         $this->filters[$name] = $handler;
     }
 
     public function component($name, $handler)
     {
+        if (!is_string($name) || !is_callable($handler)) {
+            throw new \InvalidArgumentException('Component name must be string and handler must be callable');
+        }
         $this->components[$name] = $handler;
     }
 

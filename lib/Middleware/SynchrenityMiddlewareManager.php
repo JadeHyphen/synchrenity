@@ -16,8 +16,10 @@ class SynchrenityMiddlewareManager
 
     public function add($middleware)
     {
+        if (!is_object($middleware) || !method_exists($middleware, 'handle')) {
+            throw new \InvalidArgumentException('Middleware must be an object with a handle method');
+        }
         $this->middleware[] = $middleware;
-
         return $this;
     }
 
@@ -36,15 +38,19 @@ class SynchrenityMiddlewareManager
 
     public function addErrorHandler(callable $handler)
     {
+        if (!is_callable($handler)) {
+            throw new \InvalidArgumentException('Error handler must be callable');
+        }
         $this->errorHandlers[] = $handler;
-
         return $this;
     }
 
     public function addHook($event, callable $cb)
     {
+        if (!is_string($event) || !is_callable($cb)) {
+            throw new \InvalidArgumentException('Hook event must be string and callback must be callable');
+        }
         $this->hooks[$event][] = $cb;
-
         return $this;
     }
 

@@ -374,7 +374,7 @@ class SynchrenitySecurityManager
         foreach ($this->eventHooks[$event] as $hook) {
             if (is_callable($hook)) {
                 try {
-                    $hook($details);
+                    call_user_func($hook, $details);
                 } catch (\Throwable $e) {
                     // Optionally log or handle hook errors
                 }

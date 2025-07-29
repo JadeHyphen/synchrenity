@@ -22,24 +22,37 @@ if (!empty($_SERVER['REQUEST_METHOD'])) {
 }
 
 // --- Synchrenity Core System Initialization ---
+// Use Composer autoloading
+require_once __DIR__ . '/../vendor/autoload.php';
+
+// Robust config/env validation
+if (!file_exists(__DIR__ . '/../.env')) {
+    error_log('[Synchrenity Error] .env file missing.');
+    http_response_code(500);
+    echo "<h1>Configuration error: .env file missing</h1>";
+    exit(1);
+}
+if (!file_exists(__DIR__ . '/../config/app.php')) {
+    error_log('[Synchrenity Error] config/app.php missing.');
+    http_response_code(500);
+    echo "<h1>Configuration error: config/app.php missing</h1>";
+    exit(1);
+}
+
+// Global exception handler
+set_exception_handler(function($e) {
+    error_log('[Synchrenity Uncaught Exception] ' . $e->getMessage() . "\n" . $e->getTraceAsString());
+    http_response_code(500);
+    echo "<h1>Internal Server Error</h1>";
+    exit(1);
+});
+
+// Initialize core systems
 use Synchrenity\Support\SynchrenityEventDispatcher;
 use Synchrenity\Support\SynchrenityMiddlewareManager;
 use Synchrenity\Security\SynchrenitySecurityManager;
 use Synchrenity\Support\SynchrenityLogger;
 
-require_once __DIR__ . '/../lib/Support/SynchrenityEventDispatcher.php';
-require_once __DIR__ . '/../lib/Support/SynchrenityMiddlewareManager.php';
-require_once __DIR__ . '/../lib/Security/SynchrenitySecurityManager.php';
-require_once __DIR__ . '/../lib/Support/SynchrenityLogger.php';
-require_once __DIR__ . '/../lib/SynchrenityCore.php';
-if (!class_exists('Synchrenity\\SynchrenityCore')) {
-    error_log('[Synchrenity Error] SynchrenityCore class not found after require. Check namespace and autoloading.');
-    http_response_code(500);
-    echo "<h1>SynchrenityCore class not found</h1>";
-    exit(1);
-}
-
-// Initialize core systems
 $eventDispatcher = new SynchrenityEventDispatcher();
 $middlewareManager = new SynchrenityMiddlewareManager();
 $securityManager = new SynchrenitySecurityManager([
@@ -67,28 +80,25 @@ $middlewareManager->registerSecurityHook(function($payload, $context) use ($secu
 });
 
 // --- Advanced Rate Limiter Integration ---
-require_once __DIR__ . '/../lib/API/SynchrenityApiRateLimiter.php';
-require_once __DIR__ . '/../config/api_rate_limits.php';
-require_once __DIR__ . '/../config/oauth2.php';
+// Use config objects loaded by bootstrap/app.php or fallback to require if not present
 use Synchrenity\API\SynchrenityApiRateLimiter;
-$apiRateLimitsConfig = require __DIR__ . '/../config/api_rate_limits.php';
-$oauth2Config = require __DIR__ . '/../config/oauth2.php';
-$rateLimiter = new \Synchrenity\API\SynchrenityApiRateLimiter(
-    $apiRateLimitsConfig->all(),
+$apiRateLimitsConfig = $apiRateLimitsConfig ?? (file_exists(__DIR__ . '/../config/api_rate_limits.php') ? require __DIR__ . '/../config/api_rate_limits.php' : null);
+$oauth2Config = $oauth2Config ?? (file_exists(__DIR__ . '/../config/oauth2.php') ? require __DIR__ . '/../config/oauth2.php' : null);
+$rateLimiter = new SynchrenityApiRateLimiter(
+    $apiRateLimitsConfig ? $apiRateLimitsConfig->all() : [],
     [],
     function($user, $role, $endpoint) use ($apiRateLimitsConfig) {
-        // Dynamic config: use advanced config object
-        $conf = $apiRateLimitsConfig->get($endpoint, $role);
+        $conf = $apiRateLimitsConfig ? $apiRateLimitsConfig->get($endpoint, $role) : null;
         return is_array($conf) ? $conf : null;
     }
 );
-if (method_exists($core, 'audit')) $rateLimiter->setAuditTrail($core->audit());
-// Register advanced event hooks
-$rateLimiter->on('allowed', function($data, $limiter) use ($core) {
-    if (method_exists($core, 'audit')) $core->audit()->log('rate.allowed', $data);
+// Only set audit trail and event hooks if $core is defined
+if (isset($core) && method_exists($core, 'audit')) $rateLimiter->setAuditTrail($core->audit());
+$rateLimiter->on('allowed', function($data, $limiter) use (&$core) {
+    if (isset($core) && method_exists($core, 'audit')) $core->audit()->log('rate.allowed', $data);
 });
-$rateLimiter->on('blocked', function($data, $limiter) use ($core) {
-    if (method_exists($core, 'audit')) $core->audit()->log('rate.blocked', $data);
+$rateLimiter->on('blocked', function($data, $limiter) use (&$core) {
+    if (isset($core) && method_exists($core, 'audit')) $core->audit()->log('rate.blocked', $data);
     http_response_code(429);
     header('X-RateLimit-Limit: ' . ($data['limit'] ?? ''));
     header('X-RateLimit-Remaining: 0');
@@ -96,22 +106,16 @@ $rateLimiter->on('blocked', function($data, $limiter) use ($core) {
     echo "<h1>Too Many Requests</h1>";
     exit(1);
 });
-// Plugin: anomaly detection & hot-reload
 $rateLimiter->registerPlugin(new class {
-    public function onAllowed($user, $role, $endpoint, $limiter) {
-        // Could push to metrics system
-    }
+    public function onAllowed($user, $role, $endpoint, $limiter) {}
     public function onBlocked($user, $role, $endpoint, $limiter) {
-        // Could push to alerting system
         if ($limiter->getMetrics()['blocked'] > 10) {
             // Example: trigger alert or reload config
         }
     }
 });
-// Hot-reload support (dev only)
 if (getenv('SYNCHRENITY_DEV') === '1') {
     if (isset($_GET['__reload_limits'])) {
-        // Example: reload from file
         $limitsFile = __DIR__ . '/../config/rate_limits.json';
         if (file_exists($limitsFile)) {
             $limits = json_decode(file_get_contents($limitsFile), true);
