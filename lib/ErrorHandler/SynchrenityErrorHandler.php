@@ -45,15 +45,17 @@ class SynchrenityErrorHandler
     public function handle($error)
     {
         $this->metrics['handled']++;
-        $type             = $error['type']    ?? 'error';
-        $message          = $error['message'] ?? 'Unknown error';
-        $context          = $error['context'] ?? [];
+        $type    = $error['type']    ?? 'error';
+        $message = $error['message'] ?? 'Unknown error';
+        $context = $error['context'] ?? [];
+
         if (!is_array($context)) {
             $context = [];
         }
-        $code             = $error['code']    ?? 500;
-        $errorId          = $this->generateErrorId($error);
-        $error['id']      = $errorId;
+        $code        = $error['code'] ?? 500;
+        $errorId     = $this->generateErrorId($error);
+        $error['id'] = $errorId;
+
         if (!is_array($error['context'])) {
             $error['context'] = [];
         }
@@ -236,6 +238,7 @@ class SynchrenityErrorHandler
         http_response_code($error['code'] ?? 500);
         echo '<pre style="color:red;background:#fff;padding:1em;">';
         $msg = $error['message'] ?? 'Unknown error';
+
         if (!is_string($msg)) {
             $msg = strval($msg);
         }
@@ -263,6 +266,7 @@ class SynchrenityErrorHandler
         // Optionally show error code or support link
         if (!empty($error['code'])) {
             $code = $error['code'];
+
             if (!is_string($code)) {
                 $code = strval($code);
             }

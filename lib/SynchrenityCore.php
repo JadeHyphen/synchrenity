@@ -509,6 +509,7 @@ class SynchrenityCore
     public function setErrorHandler($handler)
     {
         $this->errorHandler = $handler;
+
         if (is_object($handler) && method_exists($handler, 'phpErrorHandler') && method_exists($handler, 'phpExceptionHandler')) {
             set_error_handler([$handler, 'phpErrorHandler']);
             set_exception_handler([$handler, 'phpExceptionHandler']);
@@ -528,6 +529,7 @@ class SynchrenityCore
                 'code'    => 500,
             ];
         }
+
         if ($this->errorHandler && method_exists($this->errorHandler, 'handle')) {
             $this->errorHandler->handle($error);
         } else {
