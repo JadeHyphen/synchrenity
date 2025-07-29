@@ -7,26 +7,19 @@
     failOnWarning="true"
     beStrictAboutTestsThatDoNotTestAnything="true"
     beStrictAboutOutputDuringTests="true"
-    beStrictAboutCoversAnnotation="true"
     executionOrder="random"
-    cacheResult="true"
     cacheDirectory=".phpunit.cache"
-    processIsolation="false"
-    verbose="true"
     >
     <testsuites>
         <testsuite name="Synchrenity Test Suite">
             <directory>tests</directory>
         </testsuite>
     </testsuites>
-    <coverage processUncoveredFiles="true">
-        <include>
-            <directory suffix=".php">lib</directory>
-        </include>
+    <coverage>
         <report>
             <clover outputFile="build/logs/clover.xml"/>
             <html outputDirectory="build/coverage"/>
-            <text showUncoveredFiles="true"/>
+            <text outputFile="build/logs/coverage.txt" showUncoveredFiles="true"/>
         </report>
     </coverage>
     <logging>

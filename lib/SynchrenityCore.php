@@ -297,6 +297,25 @@ class SynchrenityCore
     /**
      * Audit trail instance
      */
+
+    /**
+     * Plugin manager module
+     * @var mixed|null
+     */
+    public $pluginManager = null;
+
+    /**
+     * Health check module
+     * @var mixed|null
+     */
+    public $health = null;
+
+    /**
+     * Test utilities module
+     * @var mixed|null
+     */
+    public $testUtils = null;
+
     protected $auditTrail;
 
     // Module properties for audit injection
@@ -598,12 +617,16 @@ class SynchrenityCore
         // --- Event: after routing ---
         $this->dispatch('after.routing', $response);
 
+
         // --- Send response ---
-        $response->send();
-        $this->log('info', 'Response sent', [
-            'status' => $response->getStatusCode() ?? 200,
-            'uri'    => $_SERVER['REQUEST_URI']    ?? null,
-        ]);
+        // Skip sending response in test environment to avoid output during tests
+        if ((getenv('APP_ENV') !== 'testing') && getenv('SYNCHRENITY_TESTING') !== '1') {
+            $response->send();
+            $this->log('info', 'Response sent', [
+                'status' => $response->getStatusCode() ?? 200,
+                'uri'    => $_SERVER['REQUEST_URI']    ?? null,
+            ]);
+        }
 
         // --- Event: response.sent ---
         $this->dispatch('response.sent', $response);
