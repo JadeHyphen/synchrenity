@@ -4,6 +4,74 @@ namespace Synchrenity;
 // SynchrenityKernel: Robust CLI kernel for Synchrenity
 class SynchrenityKernel
 {
+    // --- ADVANCED: Command aliases ---
+    protected $aliases = [];
+    public function alias($alias, $commandName) { $this->aliases[$alias] = $commandName; }
+    public function resolveCommandName($name) {
+        return $this->aliases[$name] ?? $name;
+    }
+
+    // --- ADVANCED: Command groups/namespaces ---
+    protected $groups = [];
+    public function group($group, $commandName) {
+        $this->groups[$group][] = $commandName;
+    }
+    public function getGroups() { return $this->groups; }
+
+    // --- ADVANCED: Output formatting (JSON/YAML) ---
+    public static function output($data, $format = 'table', $headers = null) {
+        if ($format === 'json') {
+            echo json_encode($data, JSON_PRETTY_PRINT) . "\n";
+        } elseif ($format === 'table' && $headers) {
+            self::table($headers, $data);
+        } else {
+            print_r($data);
+        }
+    }
+
+    // --- ADVANCED: Logging ---
+    protected $logger;
+    public function setLogger($logger) { $this->logger = $logger; }
+    public function log($level, $msg, $context = []) {
+        if ($this->logger) return $this->logger->log($level, $msg, $context);
+        error_log("[$level] $msg " . json_encode($context));
+    }
+
+    // --- ADVANCED: Command scheduling (cron-like) ---
+    protected $schedules = [];
+    public function schedule($commandName, $cronExpr) { $this->schedules[] = ['command'=>$commandName,'cron'=>$cronExpr]; }
+    public function getSchedules() { return $this->schedules; }
+
+    // --- ADVANCED: Plugin/extension loader ---
+    public function loadPlugin($file) {
+        if (file_exists($file)) {
+            $plugin = include $file;
+            if (is_object($plugin) && method_exists($plugin, 'register')) $plugin->register($this);
+        }
+    }
+
+    // --- ADVANCED: Interactive mode ---
+    public function interactive($prompt, callable $handler) {
+        while (true) {
+            $input = self::prompt($prompt);
+            if (in_array($input, ['exit','quit','q'])) break;
+            $handler($input, $this);
+        }
+    }
+
+    // --- ADVANCED: Exit codes ---
+    const EXIT_SUCCESS = 0;
+    const EXIT_ERROR = 1;
+    const EXIT_USAGE = 2;
+
+    // --- ADVANCED: Environment awareness ---
+    public function isTTY() { return function_exists('posix_isatty') && posix_isatty(STDOUT); }
+    public function isCI() { return getenv('CI') || getenv('CONTINUOUS_INTEGRATION'); }
+
+    // --- ADVANCED: Security (restrict commands) ---
+    protected $allowedUsers = [];
+    public function allowUser($user) { $this->allowedUsers[] = $user; }
+    public function isUserAllowed($user) { return empty($this->allowedUsers) || in_array($user, $this->allowedUsers); }
     /**
      * @var SynchrenityCommand[] Registered command instances
      */
@@ -60,21 +128,33 @@ class SynchrenityKernel
         if (empty($args)) {
             $args = ['list'];
         }
-        $commandName = $args[0];
+        $commandName = $this->resolveCommandName($args[0]);
         $commandName = preg_replace('/[^a-zA-Z0-9:_-]/', '', $commandName);
         $command = $this->getCommand($commandName);
         if ($command) {
+            // Security: restrict by user if set
+            $user = get_current_user();
+            if (!$this->isUserAllowed($user)) {
+                self::errorBlock("User '$user' is not allowed to run this command.");
+                return self::EXIT_ERROR;
+            }
             // Parse options and flags
             $parsed = $this->parseArgs(array_slice($args, 1));
             try {
-                return $command->handle($parsed['args'], $parsed['options'], $parsed['flags']);
+                $result = $command->handle($parsed['args'], $parsed['options'], $parsed['flags']);
+                // Output formatting
+                if (isset($parsed['options']['output'])) {
+                    self::output($result, $parsed['options']['output']);
+                }
+                return is_int($result) ? $result : self::EXIT_SUCCESS;
             } catch (\Throwable $e) {
+                $this->log('error', $e->getMessage(), ['exception'=>$e]);
                 self::errorBlock($e->getMessage());
-                return 1;
+                return self::EXIT_ERROR;
             }
         }
         self::errorBlock("Unknown command: $commandName");
-        return 1;
+        return self::EXIT_USAGE;
     }
 
     /**

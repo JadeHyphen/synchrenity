@@ -1,27 +1,50 @@
+
 # Synchrenity Audit Trail
 
-## Overview
-Centralized audit logging for all modules, with file/db backends, integrity, alerting, filtering, export, rotation, tamper detection, streaming, RBAC, retention, dashboard, and compliance.
+> Tamper-proof, centralized audit logging for compliance, security, and observability.
 
-## Usage
+---
+
+## 📝 Logging Actions
+
 ```php
-$core->audit()->log('action', ['details'], $userId, ['meta']);
-$logs = $core->audit()->getLogs(100);
+$core->audit()->log('user.login', ['ip' => $_SERVER['REMOTE_ADDR']], $userId, ['meta' => 'extra']);
+$core->audit()->log('data.export', ['table' => 'users'], $adminId);
 ```
 
-## Features
-- File/DB logging
-- Encryption
-- Multi-tenancy
-- Geo/IP
-- Alerting
-- Filtering
-- Export/rotation
-- Tamper detection
-- Streaming
-- RBAC
-- Retention
-- Dashboard
-- Compliance reports
-- API
-- Anomaly detection
+---
+
+## 🔍 Querying & Filtering Logs
+
+```php
+$logs = $core->audit()->getLogs(100, ['action' => 'user.login']);
+foreach ($logs as $log) {
+    // Display or export
+}
+```
+
+---
+
+## 🛡️ Security & Compliance
+
+- File/DB logging with encryption
+- Tamper detection and anomaly alerts
+- Multi-tenancy, geo/IP, RBAC
+- Retention, export, and rotation
+- Compliance dashboards and reports
+
+---
+
+## 📊 Example: Audit Dashboard
+
+```php
+$dashboard = $core->audit()->dashboard();
+echo $dashboard->render();
+```
+
+---
+
+## 🔗 See Also
+
+- [Monitoring & Logging](MONITORING.md)
+- [Usage Guide](USAGE_GUIDE.md)

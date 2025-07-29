@@ -9,6 +9,144 @@ namespace Synchrenity;
  */
 class SynchrenityCore
 {
+    // --- ADVANCED: Middleware pipeline ---
+    protected $middleware = [];
+    public function addMiddleware($mw) { $this->middleware[] = $mw; }
+    public function runMiddleware($request, $final = null) {
+        $stack = $this->middleware;
+        $core = $this;
+        $index = 0;
+        $next = function($req) use (&$stack, &$index, $final, $core, &$next) {
+            if (!isset($stack[$index])) return $final ? $final($req) : $req;
+            $mw = $stack[$index++];
+            return $mw->handle($req, $next);
+        };
+        return $next($request);
+    }
+
+    // --- ADVANCED: Health/readiness/liveness checks ---
+    public function health() { return ['status'=>'ok','uptime'=>time()-($_SERVER['REQUEST_TIME']??time())]; }
+    public function readiness() { return ['ready'=>true]; }
+    public function liveness() { return ['alive'=>true]; }
+
+    // --- ADVANCED: Hot reload/config reload ---
+    public function reloadConfig(array $config = []) {
+        if (!empty($config)) $this->config = $config;
+        else if (file_exists('config/config.php')) $this->config = include 'config/config.php';
+    }
+    public function reloadEnv(array $env = []) {
+        if (!empty($env)) $this->env = $env;
+        else if (file_exists('.env')) $this->env = parse_ini_file('.env');
+    }
+
+    // --- ADVANCED: Dependency Injection Container ---
+    protected $container = [];
+    public function bind($name, $resolver) { $this->container[$name] = $resolver; }
+    public function make($name, ...$args) {
+        if (!isset($this->container[$name])) throw new \RuntimeException("Service $name not bound");
+        return call_user_func_array($this->container[$name], $args);
+    }
+
+    // --- ADVANCED: Advanced logging ---
+    /**
+     * Modern logging: SynchrenityLogger instance (file, stdout, JSON, rotation, context, channels)
+     */
+    public $logger;
+    public function setLogger($logger) { $this->logger = $logger; }
+    public function log($level, $msg, $context = []) {
+        if ($this->logger) return $this->logger->log($level, $msg, $context);
+        error_log("[$level] $msg " . json_encode($context));
+    }
+
+    // --- ADVANCED: Metrics/observability ---
+    protected $metrics = [];
+    public function recordMetric($name, $value, $tags = []) {
+        $this->metrics[] = ['name'=>$name,'value'=>$value,'tags'=>$tags,'time'=>time()];
+    }
+    public function getMetrics() { return $this->metrics; }
+
+    // --- ADVANCED: Graceful shutdown (signal handling) ---
+    protected $shutdownHandlers = [];
+    public function onShutdown(callable $cb) { $this->shutdownHandlers[] = $cb; }
+    public function handleSignals() {
+        if (function_exists('pcntl_signal')) {
+            pcntl_signal(SIGTERM, [$this, 'shutdown']);
+            pcntl_signal(SIGINT, [$this, 'shutdown']);
+        }
+    }
+    public function shutdown() {
+        $this->runLifecycleHook('shutdown');
+        foreach ($this->shutdownHandlers as $cb) $cb($this);
+    }
+
+    // --- ADVANCED: Secrets management ---
+    protected $secrets = [];
+    public function loadSecrets($source = null) {
+        if ($source && is_array($source)) $this->secrets = $source;
+        else if (file_exists('secrets.php')) $this->secrets = include 'secrets.php';
+        else if (file_exists('.secrets.env')) $this->secrets = parse_ini_file('.secrets.env');
+    }
+    public function secret($key, $default = null) { return $this->secrets[$key] ?? $default; }
+
+    // --- ADVANCED: Async event bus ---
+    protected $eventQueue = [];
+    public function queueEvent($event, ...$args) { $this->eventQueue[] = [$event, $args]; }
+    public function processEventQueue() {
+        while ($evt = array_shift($this->eventQueue)) $this->dispatch($evt[0], ...$evt[1]);
+    }
+
+    // --- ADVANCED: Plugin/extension loader ---
+    public function loadPlugin($file) {
+        if (file_exists($file)) {
+            $plugin = include $file;
+            if (is_object($plugin) && method_exists($plugin, 'register')) $plugin->register($this);
+        }
+    }
+    public function unloadPlugin($name) {
+        unset($this->modules[$name]);
+        unset($this->$name);
+    }
+
+    // --- ADVANCED: Security hardening ---
+    public function validateRequest($request) {
+        // Example: check for required fields, input types, etc.
+        return is_array($request) && isset($request['headers']) && isset($request['body']);
+    }
+    public function sanitize($data) {
+        if (is_array($data)) foreach ($data as $k=>$v) $data[$k] = $this->sanitize($v);
+        return is_string($data) ? htmlspecialchars($data, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') : $data;
+    }
+
+    // --- ADVANCED: Multi-tenancy ---
+    protected $tenantContext = null;
+    public function setTenantContext($tenant) { $this->tenantContext = $tenant; }
+    public function getTenantContext() { return $this->tenantContext; }
+
+    // --- ADVANCED: Distributed locking/coordination ---
+    protected $locks = [];
+    public function acquireLock($name) {
+        if (!isset($this->locks[$name])) { $this->locks[$name] = true; return true; }
+        return false;
+    }
+    public function releaseLock($name) { unset($this->locks[$name]); }
+
+    // --- ADVANCED: API versioning ---
+    protected $apiVersion = 'v1';
+    public function setApiVersion($ver) { $this->apiVersion = $ver; }
+    public function getApiVersion() { return $this->apiVersion; }
+
+    // --- ADVANCED: Self-diagnostics ---
+    public function diagnostics() {
+        return [
+            'framework' => self::$frameworkName,
+            'version' => $this->getApiVersion(),
+            'modules' => array_keys($this->modules),
+            'metrics' => $this->getMetrics(),
+            'uptime' => time()-($_SERVER['REQUEST_TIME']??time()),
+            'env' => $this->env,
+            'config' => $this->config,
+        ];
+    }
     /**
      * Stores application configuration
      * @var array
@@ -106,12 +244,8 @@ class SynchrenityCore
         }
     }
 
-    /**
-     * Shutdown the framework (run shutdown hooks)
-     */
-    public function shutdown() {
-        $this->runLifecycleHook('shutdown');
-    }
+    // --- ADVANCED: Graceful shutdown (merged) ---
+    // Already implemented above; removed deprecated duplicate.
 
     /**
      * Initialize the core with configuration and environment
@@ -120,6 +254,18 @@ class SynchrenityCore
     {
         $this->config = $config;
         $this->env = $env;
+        // --- Logging: auto-initialize logger ---
+        if (class_exists('Synchrenity\Logging\SynchrenityLogger')) {
+            $logDir = $config['log_dir'] ?? __DIR__ . '/../storage/logs';
+            $this->logger = new \Synchrenity\Logging\SynchrenityLogger([
+                'log_dir' => $logDir,
+                'channel' => 'app',
+                'level' => $env['LOG_LEVEL'] ?? 'debug',
+                'json' => $env['LOG_JSON'] ?? true,
+                'stdout' => $env['LOG_STDOUT'] ?? false
+            ]);
+            $this->log('info', 'SynchrenityCore initialized');
+        }
         $this->setupErrorHandling();
         $this->auditTrail = new \Synchrenity\Audit\SynchrenityAuditTrail();
 
@@ -146,10 +292,17 @@ class SynchrenityCore
                     if (method_exists($this->$prop, 'setAuditTrail')) {
                         $this->$prop->setAuditTrail($this->auditTrail);
                     }
+                    // --- Logging: inject logger into modules if supported ---
+                    if (property_exists($this->$prop, 'logger')) {
+                        $this->$prop->logger = $this->logger;
+                    } elseif (method_exists($this->$prop, 'setLogger')) {
+                        $this->$prop->setLogger($this->logger);
+                    }
                     $this->modules[$prop] = $this->$prop;
                 }
             }
         }
+        $this->log('info', 'All modules initialized');
         $this->runLifecycleHook('boot');
     }
 
@@ -242,6 +395,9 @@ class SynchrenityCore
     {
         $this->setErrorHandler(function($e) {
             $msg = $e instanceof \Throwable ? $e->getMessage() : $e;
+            if ($this->logger) {
+                $this->logger->error($msg, ['exception' => $e]);
+            }
             echo "[Synchrenity Error] " . $msg . "\n";
         });
     }
@@ -251,17 +407,25 @@ class SynchrenityCore
      */
     public function handleRequest()
     {
+        $this->log('info', 'Request received', [
+            'method' => $_SERVER['REQUEST_METHOD'] ?? null,
+            'uri' => $_SERVER['REQUEST_URI'] ?? null,
+            'ip' => $_SERVER['REMOTE_ADDR'] ?? null
+        ]);
         // --- Event: request.received ---
         $this->dispatch('request.received');
 
         // --- Rate Limiting ---
-        $rateLimiter = new \Synchrenity\Http\SynchrenityRateLimiter();
-        $rateLimiter->setLimit('ip:' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'), 100, 60); // 100 req/min per IP
-        if (!$rateLimiter->check('ip:' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'))) {
-            $this->dispatch('rate.limit.exceeded');
-            $response = new \Synchrenity\Http\SynchrenityResponse('Rate limit exceeded', 429);
-            $response->send();
-            return;
+        $rateLimiter = $this->rateLimiter;
+        if ($rateLimiter) {
+            $rateLimiter->setLimit('ip:' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'), 100, 60); // 100 req/min per IP
+            if (!$rateLimiter->check('ip:' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'))) {
+                $this->log('warning', 'Rate limit exceeded', ['ip' => $_SERVER['REMOTE_ADDR'] ?? null]);
+                $this->dispatch('rate.limit.exceeded');
+                $response = new \Synchrenity\Http\SynchrenityResponse('Rate limit exceeded', 429);
+                $response->send();
+                return;
+            }
         }
 
         // --- Event: before routing ---
@@ -281,6 +445,10 @@ class SynchrenityCore
 
         // --- Send response ---
         $response->send();
+        $this->log('info', 'Response sent', [
+            'status' => $response->getStatusCode() ?? 200,
+            'uri' => $_SERVER['REQUEST_URI'] ?? null
+        ]);
 
         // --- Event: response.sent ---
         $this->dispatch('response.sent', $response);

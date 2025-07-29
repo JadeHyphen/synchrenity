@@ -2,6 +2,17 @@
 namespace Synchrenity\Audit;
 
 class SynchrenityAuditTrail {
+    // Plugin/event/metrics/context/introspection system
+    private $plugins = [];
+    private $events = [];
+    private $metrics = [
+        'logs' => 0,
+        'errors' => 0,
+        'alerts' => 0,
+        'anomalies' => 0,
+        'forwards' => 0
+    ];
+    private $context = [];
     // Core properties
     private $logFile;
     private $db;
@@ -35,6 +46,7 @@ class SynchrenityAuditTrail {
 
     // Main log method
     public function log($action, $data, $userId = null, $meta = []) {
+        $this->metrics['logs']++;
         $timestamp = date('Y-m-d H:i:s');
         $ip = $_SERVER['REMOTE_ADDR'] ?? 'cli';
         $geo = $this->geoProvider ? call_user_func($this->geoProvider, $ip) : null;
@@ -59,8 +71,50 @@ class SynchrenityAuditTrail {
             $this->writeToDb($entry);
         }
         if ($this->alertCallback && in_array($action, ['delete_user', 'tamper_detected', 'critical_error'])) {
+            $this->metrics['alerts']++;
             call_user_func($this->alertCallback, $entry);
         }
+        $this->triggerEvent('log', $entry);
+        foreach ($this->plugins as $plugin) {
+            if (is_callable([$plugin, 'onLog'])) $plugin->onLog($entry, $this);
+        }
+    }
+    // Plugin system
+    public function registerPlugin($plugin) { $this->plugins[] = $plugin; }
+    // Event system
+    public function on($event, callable $cb) { $this->events[$event][] = $cb; }
+    private function triggerEvent($event, $data = null) {
+        foreach ($this->events[$event] ?? [] as $cb) call_user_func($cb, $data, $this);
+    }
+    // Metrics
+    public function getMetrics() { return $this->metrics; }
+    // Context
+    public function setContext($key, $value) { $this->context[$key] = $value; }
+    public function getContext($key, $default = null) { return $this->context[$key] ?? $default; }
+    // Introspection
+    public function getPlugins() { return $this->plugins; }
+    public function getEvents() { return $this->events; }
+    // Advanced search
+    public function search($query) {
+        $logs = $this->getLogs(1000);
+        return array_filter($logs, function($log) use ($query) {
+            return stripos(json_encode($log), $query) !== false;
+        });
+    }
+    // Audit chain (hash chain for tamper-proofing)
+    public function verifyChain() {
+        $logs = $this->getLogs(1000);
+        $prev = '';
+        foreach ($logs as $log) {
+            $expected = hash('sha256', ($prev ? $prev : '') . $log->hash);
+            if (isset($log->chain) && $log->chain !== $expected) return false;
+            $prev = $log->hash;
+        }
+        return true;
+    }
+    // Add chain hash to log entry (call in log())
+    private function addChainHash(&$entry, $prevHash) {
+        $entry['chain'] = hash('sha256', ($prevHash ? $prevHash : '') . $entry['hash']);
     }
 
     private function writeToFile($entry) {

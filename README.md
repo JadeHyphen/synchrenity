@@ -55,7 +55,7 @@ if (isset($result['error'])) {
 - Fast RESTful routing with middleware, priorities, rate limiting, and versioning
 - Ultra-secure authentication, authorization, and encryption
 - Advanced event system with hooks, audit logging, and async dispatch
-- Powerful templating engine (Forge) with components, layouts, and filters
+- Powerful templating engine (Weave) with components, layouts, and filters
 - Robust ORM (Atlas) for database abstraction and migrations
 - Flexible pagination, error handling, and mailer
 - CLI tools for migrations, seeds, and app management
@@ -108,7 +108,7 @@ docs/               # Documentation and guides
 - **Middleware:** Global, route, and event middleware with async and error handling
 - **Security:** Centralized manager for auth, encryption, validation, rate limiting, audit logging
 - **Events:** Register listeners, hooks, and transactional events
-- **Templating:** Use Forge for secure, extensible views and components
+- **Templating:** Use Weave for secure, extensible views and components
 - **ORM:** Atlas for database models, migrations, and queries
 - **Pagination:** SynchrenityPaginator for flexible, secure pagination
 - **Error Handling:** Advanced error handler with reporting and custom responses
@@ -209,7 +209,7 @@ $eventDispatcher->register('user.created', function($user) {
 ```
 ### Templating
 ```php
-echo $forge->render('users/list', ['users' => $users]);
+echo $weave->render('users/list', ['users' => $users]);
 ```
 ### ORM
 ```php
@@ -218,7 +218,7 @@ $user = Atlas::table('users')->find($id);
 ### Pagination
 ```php
 $paginator = new SynchrenityPaginator($data, $total, $page, $perPage);
-echo ForgePagination::render($paginator);
+echo WeavePagination::render($paginator);
 ```
 ### Error Handling
 ```php

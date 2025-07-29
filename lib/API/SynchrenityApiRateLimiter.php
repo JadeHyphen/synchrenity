@@ -9,6 +9,15 @@ class SynchrenityApiRateLimiter {
     protected $burstLimits = [];
     protected $dynamicConfig;
     protected $hooks = [];
+    protected $plugins = [];
+    protected $events = [];
+    protected $metrics = [
+        'checks' => 0,
+        'allowed' => 0,
+        'blocked' => 0,
+        'errors' => 0
+    ];
+    protected $context = [];
 
     public function __construct($limits = [], $burstLimits = [], $dynamicConfig = null) {
         $this->limits = $limits;
@@ -33,6 +42,7 @@ class SynchrenityApiRateLimiter {
     }
 
     public function check($user, $role, $endpoint) {
+        $this->metrics['checks']++;
         $now = time();
         $conf = $this->limits[$endpoint][$role] ?? $this->limits['default']['default'] ?? [ 'limit' => 10, 'window' => 60 ];
         $limit = $conf['limit'];
@@ -59,11 +69,22 @@ class SynchrenityApiRateLimiter {
 
         $allowed = $count < $limit && $burstCount < $burst;
         if ($allowed) {
+            $this->metrics['allowed']++;
             $this->analytics[$endpoint][$role][$user][] = $now;
             if (!empty($this->hooks)) {
                 foreach ($this->hooks as $hookFn) {
                     call_user_func($hookFn, $user, $role, $endpoint, $count+1, $limit, $burstCount+1, $burst);
                 }
+            }
+            $this->triggerEvent('allowed', compact('user','role','endpoint','count','limit','burstCount','burst'));
+            foreach ($this->plugins as $plugin) {
+                if (is_callable([$plugin, 'onAllowed'])) $plugin->onAllowed($user, $role, $endpoint, $this);
+            }
+        } else {
+            $this->metrics['blocked']++;
+            $this->triggerEvent('blocked', compact('user','role','endpoint','count','limit','burstCount','burst'));
+            foreach ($this->plugins as $plugin) {
+                if (is_callable([$plugin, 'onBlocked'])) $plugin->onBlocked($user, $role, $endpoint, $this);
             }
         }
 
@@ -90,8 +111,24 @@ class SynchrenityApiRateLimiter {
         if ($this->auditTrail) {
             $this->auditTrail->log('api_rate_limit_check', [], $user, $meta);
         }
+        $this->context = $meta;
         return $allowed;
     }
+    // Plugin system
+    public function registerPlugin($plugin) { $this->plugins[] = $plugin; }
+    // Event system
+    public function on($event, callable $cb) { $this->events[$event][] = $cb; }
+    protected function triggerEvent($event, $data = null) {
+        foreach ($this->events[$event] ?? [] as $cb) call_user_func($cb, $data, $this);
+    }
+    // Metrics
+    public function getMetrics() { return $this->metrics; }
+    // Context
+    public function setContext($key, $value) { $this->context[$key] = $value; }
+    public function getContext($key, $default = null) { return $this->context[$key] ?? $default; }
+    // Introspection
+    public function getPlugins() { return $this->plugins; }
+    public function getEvents() { return $this->events; }
 
     public function getAnalytics($endpoint = null, $role = null, $user = null) {
         if ($endpoint && $role && $user) return $this->analytics[$endpoint][$role][$user] ?? [];

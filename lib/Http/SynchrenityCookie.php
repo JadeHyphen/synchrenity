@@ -7,12 +7,23 @@ namespace Synchrenity\Http;
 class SynchrenityCookie
 {
     protected $secret = 'synchrenity_cookie_secret';
+    protected $encryptionKey = 'synchrenity_cookie_enc_key';
+    protected $plugins = [];
+    protected $events = [];
+    protected $metrics = [
+        'set' => 0,
+        'get' => 0,
+        'delete' => 0,
+        'consent' => 0
+    ];
+    protected $context = [];
 
     public function set($name, $value, $expire = 0, $secure = true, $httpOnly = true, $sameSite = 'Lax', $domain = '', $consent = false)
     {
         if ($consent && !$this->hasConsent()) {
             return false;
         }
+        $this->metrics['set']++;
         $signed = $this->sign($value);
         $encrypted = $this->encrypt($signed);
         $params = [
@@ -26,6 +37,10 @@ class SynchrenityCookie
             $params['domain'] = $domain;
         }
         setcookie($name, $encrypted, $params);
+        $this->triggerEvent('set', $name);
+        foreach ($this->plugins as $plugin) {
+            if (is_callable([$plugin, 'onSet'])) $plugin->onSet($name, $value, $this);
+        }
         return true;
     }
 
@@ -77,15 +92,26 @@ class SynchrenityCookie
 
     public function get($name)
     {
+        $this->metrics['get']++;
         if (!isset($_COOKIE[$name])) return null;
         $decrypted = $this->decrypt($_COOKIE[$name]);
-        return $this->verify($decrypted);
+        $verified = $this->verify($decrypted);
+        $this->triggerEvent('get', $name);
+        foreach ($this->plugins as $plugin) {
+            if (is_callable([$plugin, 'onGet'])) $verified = $plugin->onGet($name, $verified, $this);
+        }
+        return $verified;
     }
 
     public function delete($name)
     {
+        $this->metrics['delete']++;
         setcookie($name, '', time() - 3600, '/');
         unset($_COOKIE[$name]);
+        $this->triggerEvent('delete', $name);
+        foreach ($this->plugins as $plugin) {
+            if (is_callable([$plugin, 'onDelete'])) $plugin->onDelete($name, $this);
+        }
     }
 
     protected function sign($value)
@@ -105,12 +131,36 @@ class SynchrenityCookie
 
     protected function encrypt($data)
     {
-        // Simple stub, replace with real encryption
-        return base64_encode($data);
+        if (!$this->encryptionKey) return base64_encode($data);
+        $iv = substr(hash('sha256', $this->encryptionKey), 0, 16);
+        return base64_encode(openssl_encrypt($data, 'aes-256-cbc', $this->encryptionKey, 0, $iv));
     }
 
     protected function decrypt($data)
     {
-        return base64_decode($data);
+        if (!$this->encryptionKey) return base64_decode($data);
+        $iv = substr(hash('sha256', $this->encryptionKey), 0, 16);
+        $dec = openssl_decrypt(base64_decode($data), 'aes-256-cbc', $this->encryptionKey, 0, $iv);
+        return $dec === false ? null : $dec;
     }
+
+    // Plugin system
+    public function registerPlugin($plugin) { $this->plugins[] = $plugin; }
+
+    // Event system
+    public function on($event, callable $cb) { $this->events[$event][] = $cb; }
+    protected function triggerEvent($event, $data = null) {
+        foreach ($this->events[$event] ?? [] as $cb) call_user_func($cb, $data, $this);
+    }
+
+    // Context
+    public function setContext($key, $value) { $this->context[$key] = $value; }
+    public function getContext($key, $default = null) { return $this->context[$key] ?? $default; }
+
+    // Metrics
+    public function getMetrics() { return $this->metrics; }
+
+    // Introspection
+    public function getPlugins() { return $this->plugins; }
+    public function getEvents() { return $this->events; }
 }

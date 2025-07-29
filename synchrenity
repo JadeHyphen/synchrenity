@@ -1,8 +1,8 @@
-
-
 #!/usr/bin/env php
 <?php
 
+// Always load Composer autoloader first
+require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/lib/SynchrenityKernel.php';
 require_once __DIR__ . '/lib/SynchrenityCommand.php';
 

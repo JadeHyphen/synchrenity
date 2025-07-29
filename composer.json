@@ -25,7 +25,16 @@
         "psr/log": "^3.0",
         "psr/simple-cache": "^3.0",
         "symfony/cache": "^6.4",
-        "symfony/var-dumper": "^6.4"
+        "symfony/var-dumper": "^6.4",
+        "symfony/http-foundation": "^7.3",
+        "symfony/http-client": "^7.3",
+        "symfony/polyfill-php83": "^1.29",
+        "monolog/monolog": "^3.5",
+        "league/oauth2-client": "^2.7",
+        "psr/event-dispatcher": "^1.0",
+        "psr/http-message": "^2.0",
+        "psr/http-server-middleware": "^1.0",
+        "psr/http-server-handler": "^1.0"
     },
     "homepage": "https://github.com/JadeHyphen/synchrenity",
     "support": {
@@ -54,7 +63,9 @@
             "lib/Helpers/array.php",
             "lib/Helpers/string.php",
             "lib/Support/SynchrenityServiceContainer.php"
-        ]
+        ],
+        "optimize": true,
+        "classmap-authoritative": true
     },
     "autoload-dev": {
         "psr-4": {
@@ -64,7 +75,13 @@
     "config": {
         "optimize-autoloader": true,
         "sort-packages": true,
-        "allow-plugins": true
+        "allow-plugins": true,
+        "platform": {
+            "php": "8.3.0"
+        },
+        "preferred-install": "dist",
+        "lock": false,
+        "apcu-autoloader": true
     },
     "minimum-stability": "stable",
     "prefer-stable": true,
@@ -75,5 +92,5 @@
     "bin": [
         "synchrenity"
     ],
-    "version": "3.0.0"
+    "version": "4.0.0"
 }

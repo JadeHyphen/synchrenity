@@ -16,6 +16,15 @@ class SynchrenityAtlas
     protected $casts = [];
     protected $encrypted = [];
     protected $events = [];
+    protected $plugins = [];
+    protected $metrics = [
+        'queries' => 0,
+        'creates' => 0,
+        'updates' => 0,
+        'deletes' => 0,
+        'errors' => 0
+    ];
+    protected $context = [];
     protected $cacheEnabled = false;
     protected $accessRules = [];
     protected $auditEnabled = false;
@@ -37,8 +46,10 @@ class SynchrenityAtlas
 
     public function find($id)
     {
+        $this->metrics['queries']++;
         $this->errors = [];
         if (!$this->can('view')) {
+            $this->metrics['errors']++;
             $this->errors['access'] = 'Access denied.';
             return $this->errors;
         }
@@ -54,8 +65,12 @@ class SynchrenityAtlas
             $this->original = $result;
             $this->audit('view', $result);
             $this->trigger('found', $result);
+            foreach ($this->plugins as $plugin) {
+                if (is_callable([$plugin, 'onFound'])) $plugin->onFound($result, $this);
+            }
             return $this;
         }
+        $this->metrics['errors']++;
         $this->errors['not_found'] = 'Record not found.';
         return $this->errors;
     }
@@ -109,13 +124,16 @@ class SynchrenityAtlas
 
     public function create($data)
     {
+        $this->metrics['creates']++;
         $this->errors = [];
         if (!$this->can('create')) {
+            $this->metrics['errors']++;
             $this->errors['access'] = 'Access denied.';
             return $this->errors;
         }
         $this->validate($data);
         if (!empty($this->errors)) {
+            $this->metrics['errors']++;
             return $this->errors;
         }
         $data = $this->encryptFields($data);
@@ -128,24 +146,31 @@ class SynchrenityAtlas
             $stmt->bindValue(':' . $k, $v);
         }
         if (!$stmt->execute()) {
+            $this->metrics['errors']++;
             $this->errors['query'] = 'Insert failed.';
             return $this->errors;
         }
         $id = $pdo->lastInsertId();
         $this->audit('create', $data);
         $this->trigger('created', $data);
+        foreach ($this->plugins as $plugin) {
+            if (is_callable([$plugin, 'onCreated'])) $plugin->onCreated($data, $this);
+        }
         return $id;
     }
 
     public function update($id, $data)
     {
+        $this->metrics['updates']++;
         $this->errors = [];
         if (!$this->can('update')) {
+            $this->metrics['errors']++;
             $this->errors['access'] = 'Access denied.';
             return $this->errors;
         }
         $this->validate($data);
         if (!empty($this->errors)) {
+            $this->metrics['errors']++;
             return $this->errors;
         }
         $data = $this->encryptFields($data);
@@ -161,18 +186,24 @@ class SynchrenityAtlas
         }
         $stmt->bindValue(':id', $id, \PDO::PARAM_INT);
         if (!$stmt->execute()) {
+            $this->metrics['errors']++;
             $this->errors['query'] = 'Update failed.';
             return $this->errors;
         }
         $this->audit('update', $data);
         $this->trigger('updated', $data);
+        foreach ($this->plugins as $plugin) {
+            if (is_callable([$plugin, 'onUpdated'])) $plugin->onUpdated($data, $this);
+        }
         return true;
     }
 
     public function delete($id)
     {
+        $this->metrics['deletes']++;
         $this->errors = [];
         if (!$this->can('delete')) {
+            $this->metrics['errors']++;
             $this->errors['access'] = 'Access denied.';
             return $this->errors;
         }
@@ -185,13 +216,26 @@ class SynchrenityAtlas
         $stmt = $pdo->prepare($sql);
         $stmt->bindValue(':id', $id, \PDO::PARAM_INT);
         if (!$stmt->execute()) {
+            $this->metrics['errors']++;
             $this->errors['query'] = 'Delete failed.';
             return $this->errors;
         }
         $this->audit('delete', ['id' => $id]);
         $this->trigger('deleted', ['id' => $id]);
+        foreach ($this->plugins as $plugin) {
+            if (is_callable([$plugin, 'onDeleted'])) $plugin->onDeleted(['id' => $id], $this);
+        }
         return true;
     }
+    // Plugin system
+    public function registerPlugin($plugin) { $this->plugins[] = $plugin; }
+    // Metrics
+    public function getMetrics() { return $this->metrics; }
+    // Context
+    public function setContext($key, $value) { $this->context[$key] = $value; }
+    public function getContext($key, $default = null) { return $this->context[$key] ?? $default; }
+    // Introspection
+    public function getPlugins() { return $this->plugins; }
 
     public function with($relation)
     {

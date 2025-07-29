@@ -1,24 +1,39 @@
+
 # Contributing to Synchrenity
 
-## How to Contribute
+> Guidelines for contributing, code style, review process, and community involvement.
+
+---
+
+## 🧑‍💻 How to Contribute
+
 1. Fork the repository
 2. Create a feature branch
 3. Add tests for new features
 4. Submit a pull request with a detailed description
 
-## Code Style
+---
+
+## 📝 Code Style
+
 - Follow PSR-12 coding standards
 - Use Synchrenity naming conventions
 - Write comprehensive docblocks
 
-## Testing
+---
+
+## 🧪 Testing
+
 - Add unit and integration tests for all new code
 - Run `vendor/bin/phpunit --testdox`
 
-## Review Process
+---
+
+## 🔍 Review Process
+
 - All PRs are reviewed by the core team
 - CI must pass before merging
 
-## Community
-- Join Discord for discussion and support
-- Use GitHub Issues for bug reports and feature requests
+---
+
+## 🤝 Community

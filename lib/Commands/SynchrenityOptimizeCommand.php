@@ -20,30 +20,35 @@ class SynchrenityOptimizeCommand extends \Synchrenity\SynchrenityCommand
         }
         $this->info('Composer autoload found.');
 
-        // Check for missing required packages by main class
+        // Only check for dev packages if dev dependencies are installed
+        $devInstalled = file_exists(__DIR__ . '/../../vendor/phpunit') || file_exists(__DIR__ . '/../../vendor/bin/phpunit');
         $missing = [];
         $required = [
-            'phpunit/phpunit' => 'PHPUnit\Framework\TestCase',
-            'friendsofphp/php-cs-fixer' => 'PhpCsFixer\Config',
-            'phpstan/phpstan' => 'PHPStan\Command\AnalyseCommand',
-            'symfony/console' => 'Symfony\Component\Console\Application',
-            'symfony/event-dispatcher' => 'Symfony\Component\EventDispatcher\EventDispatcher',
-            'symfony/filesystem' => 'Symfony\Component\Filesystem\Filesystem',
-            'symfony/finder' => 'Symfony\Component\Finder\Finder',
-            'symfony/options-resolver' => 'Symfony\Component\OptionsResolver\OptionsResolver',
-            'symfony/process' => 'Symfony\Component\Process\Process',
-            'symfony/stopwatch' => 'Symfony\Component\Stopwatch\Stopwatch',
-            'symfony/string' => 'Symfony\Component\String\UnicodeString',
+            'phpunit/phpunit' => 'PHPUnit\\Framework\\TestCase',
+            'friendsofphp/php-cs-fixer' => 'PhpCsFixer\\Config',
+            'phpstan/phpstan' => 'PHPStan\\Command\\AnalyseCommand',
+            'symfony/console' => 'Symfony\\Component\\Console\\Application',
+            'symfony/event-dispatcher' => 'Symfony\\Component\\EventDispatcher\\EventDispatcher',
+            'symfony/filesystem' => 'Symfony\\Component\\Filesystem\\Filesystem',
+            'symfony/finder' => 'Symfony\\Component\\Finder\\Finder',
+            'symfony/options-resolver' => 'Symfony\\Component\\OptionsResolver\\OptionsResolver',
+            'symfony/process' => 'Symfony\\Component\\Process\\Process',
+            'symfony/stopwatch' => 'Symfony\\Component\\Stopwatch\\Stopwatch',
+            'symfony/string' => 'Symfony\\Component\\String\\UnicodeString',
         ];
-        foreach ($required as $pkg => $class) {
-            if (!class_exists($class)) {
-                $missing[] = $pkg;
+        if ($devInstalled) {
+            foreach ($required as $pkg => $class) {
+                if (!class_exists($class)) {
+                    $missing[] = $pkg;
+                }
             }
-        }
-        if ($missing) {
-            $this->warn('Missing required packages: ' . implode(', ', $missing));
+            if ($missing) {
+                $this->warn('Missing required packages: ' . implode(', ', $missing));
+            } else {
+                $this->info('All required packages are installed.');
+            }
         } else {
-            $this->info('All required packages are installed.');
+            $this->info('Dev dependencies not installed; skipping dev package checks.');
         }
 
         // Check for common bugs (autoload, config, env)

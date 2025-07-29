@@ -19,26 +19,89 @@ class SynchrenityRouter
     protected $rateLimiters = [];
     protected $priorities = [];
     protected $versions = [];
+    // Advanced
+    protected $routeTags = [];
+    protected $routeHealth = [];
+    protected $routeMetrics = [];
+    protected $plugins = [];
+    protected $routeEvents = [];
 
     public function __construct($eventManager = null)
     {
         $this->eventManager = $eventManager;
     }
 
-    public function add($method, $path, $handler, $middleware = [], $name = null, $constraints = [])
+    public function add($method, $path, $handler, $middleware = [], $name = null, $constraints = [], $tags = [], $health = 'healthy', $deprecated = false)
     {
         $route = [
             'method' => strtoupper($method),
             'path' => $path,
             'handler' => $handler,
             'middleware' => $middleware,
-            'constraints' => $constraints
-            ,'priority' => $this->priorities[$path] ?? 0
-            ,'version' => $this->versions[$path] ?? null
+            'constraints' => $constraints,
+            'priority' => $this->priorities[$path] ?? 0,
+            'version' => $this->versions[$path] ?? null,
+            'tags' => $tags,
+            'health' => $health,
+            'deprecated' => $deprecated
         ];
         $this->routes[] = $route;
         if ($name) {
             $this->namedRoutes[$name] = $route;
+        }
+        // Plugin hooks
+        foreach ($this->plugins as $plugin) {
+            if (is_callable([$plugin, 'onRouteAdd'])) {
+                $plugin->onRouteAdd($route, $this);
+            }
+        }
+        $this->triggerRouteEvent('add', $route);
+    }
+
+    // Plugin system
+    public function registerPlugin($plugin) { $this->plugins[] = $plugin; }
+
+    // Route event system
+    public function onRouteEvent($event, callable $cb) { $this->routeEvents[$event][] = $cb; }
+    protected function triggerRouteEvent($event, $route) {
+        foreach ($this->routeEvents[$event] ?? [] as $cb) call_user_func($cb, $route, $this);
+    }
+
+    // Tag routes
+    public function tagRoute($path, $tag) {
+        $this->routeTags[$path][] = $tag;
+    }
+    public function getRouteTags($path) {
+        return $this->routeTags[$path] ?? [];
+    }
+
+    // Route health
+    public function setRouteHealth($path, $status) {
+        $this->routeHealth[$path] = $status;
+    }
+    public function getRouteHealth($path) {
+        return $this->routeHealth[$path] ?? 'unknown';
+    }
+
+    // Route metrics
+    public function incrementRouteMetric($path, $metric) {
+        if (!isset($this->routeMetrics[$path])) $this->routeMetrics[$path] = [];
+        if (!isset($this->routeMetrics[$path][$metric])) $this->routeMetrics[$path][$metric] = 0;
+        $this->routeMetrics[$path][$metric]++;
+    }
+    public function getRouteMetrics($path) {
+        return $this->routeMetrics[$path] ?? [];
+    }
+
+    // Route search/filter
+    public function findRoutes(callable $filter) {
+        return array_filter($this->routes, $filter);
+    }
+
+    // Deprecate route
+    public function deprecateRoute($path) {
+        foreach ($this->routes as &$route) {
+            if ($route['path'] === $path) $route['deprecated'] = true;
         }
     }
 
@@ -227,8 +290,11 @@ class SynchrenityRouter
     }
 
     // Export all routes for documentation or API clients
-    public function exportRoutes()
+    public function exportRoutes($filter = null)
     {
+        if ($filter && is_callable($filter)) {
+            return array_values(array_filter($this->routes, $filter));
+        }
         return $this->routes;
     }
 
@@ -260,8 +326,12 @@ class SynchrenityRouter
     }
 
     // Documentation helper: get all route metadata
-    public function getRouteDocs()
+    public function getRouteDocs($filter = null)
     {
+        $routes = $this->routes;
+        if ($filter && is_callable($filter)) {
+            $routes = array_filter($routes, $filter);
+        }
         return array_map(function($r) {
             return [
                 'method' => $r['method'],
@@ -270,8 +340,11 @@ class SynchrenityRouter
                 'constraints' => $r['constraints'],
                 'middleware' => $r['middleware'],
                 'priority' => $r['priority'] ?? 0,
-                'version' => $r['version'] ?? null
+                'version' => $r['version'] ?? null,
+                'tags' => $r['tags'] ?? [],
+                'health' => $r['health'] ?? 'unknown',
+                'deprecated' => $r['deprecated'] ?? false
             ];
-        }, $this->routes);
+        }, $routes);
     }
 }

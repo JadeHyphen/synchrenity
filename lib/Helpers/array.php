@@ -1,5 +1,112 @@
 <?php
-// Synchrenity array helpers
+// Synchrenity array helpers: atomic, plugin/event, metrics, context, deep, dot, immutable, extensible
+// Plugin/event/metrics/context/introspection system for array helpers
+if (!function_exists('array_helper_register_plugin')) {
+    function array_helper_register_plugin($plugin) {
+        static $plugins = [];
+        $plugins[] = $plugin;
+    }
+}
+if (!function_exists('array_helper_on')) {
+    function array_helper_on($event, callable $cb) {
+        static $events = [];
+        $events[$event][] = $cb;
+    }
+}
+if (!function_exists('array_helper_trigger')) {
+    function array_helper_trigger($event, $data = null) {
+        static $events = [];
+        foreach ($events[$event] ?? [] as $cb) call_user_func($cb, $data);
+    }
+}
+if (!function_exists('array_helper_metrics')) {
+    function array_helper_metrics() {
+        static $metrics = [
+            'calls' => 0,
+            'errors' => 0
+        ];
+        return $metrics;
+    }
+}
+if (!function_exists('array_helper_set_context')) {
+    function array_helper_set_context($key, $value) {
+        static $context = [];
+        $context[$key] = $value;
+    }
+}
+if (!function_exists('array_helper_get_context')) {
+    function array_helper_get_context($key, $default = null) {
+        static $context = [];
+        return $context[$key] ?? $default;
+    }
+}
+if (!function_exists('array_helper_plugins')) {
+    function array_helper_plugins() {
+        static $plugins = [];
+        return $plugins;
+    }
+}
+if (!function_exists('array_helper_events')) {
+    function array_helper_events() {
+        static $events = [];
+        return $events;
+    }
+}
+// Deep merge (recursive, immutable)
+if (!function_exists('array_deep_merge')) {
+    function array_deep_merge(...$arrays) {
+        $base = array_shift($arrays);
+        foreach ($arrays as $append) {
+            foreach ($append as $key => $value) {
+                if (is_array($value) && isset($base[$key]) && is_array($base[$key])) {
+                    $base[$key] = array_deep_merge($base[$key], $value);
+                } else {
+                    $base[$key] = $value;
+                }
+            }
+        }
+        return $base;
+    }
+}
+
+// Flatten with depth
+if (!function_exists('array_flatten_depth')) {
+    function array_flatten_depth($array, $depth = INF) {
+        $result = [];
+        foreach ($array as $item) {
+            if (is_array($item) && $depth > 1) {
+                $result = array_merge($result, array_flatten_depth($item, $depth - 1));
+            } else {
+                $result[] = $item;
+            }
+        }
+        return $result;
+    }
+}
+
+// Dot/undot helpers
+if (!function_exists('array_dot')) {
+    function array_dot($array, $prepend = '') {
+        $results = [];
+        foreach ($array as $key => $value) {
+            if (is_array($value) && !empty($value)) {
+                $results += array_dot($value, $prepend . $key . '.');
+            } else {
+                $results[$prepend . $key] = $value;
+            }
+        }
+        return $results;
+    }
+}
+if (!function_exists('array_undot')) {
+    function array_undot($array) {
+        $result = [];
+        foreach ($array as $key => $value) {
+            array_set($result, $key, $value);
+        }
+        return $result;
+    }
+}
 
 if (!function_exists('array_get')) {
     function array_get(array $array, $key, $default = null) {
@@ -101,15 +208,7 @@ if (!function_exists('array_last')) {
 
 if (!function_exists('array_flatten')) {
     function array_flatten($array) {
-        $result = [];
-        foreach ($array as $item) {
-            if (is_array($item)) {
-                $result = array_merge($result, array_flatten($item));
-            } else {
-                $result[] = $item;
-            }
-        }
-        return $result;
+        return array_flatten_depth($array, INF);
     }
 }
 
