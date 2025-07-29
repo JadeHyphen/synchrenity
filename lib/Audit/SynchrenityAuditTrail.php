@@ -291,6 +291,7 @@ class SynchrenityAuditTrail
             $log = json_decode($line);
             $ts  = isset($log->timestamp) ? strtotime($log->timestamp) : false;
 
+
             if ($ts !== false && $ts >= $cutoff) {
                 $keep[] = $line;
             } else {
