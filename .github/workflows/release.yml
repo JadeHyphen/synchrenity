@@ -1,25 +1,44 @@
-name: Release
 
+name: Release
 on:
   push:
     tags:
       - 'v*.*.*'
-
+permissions:
+  contents: write
+  id-token: write
+  packages: write
+  actions: read
 jobs:
   release:
     runs-on: ubuntu-latest
+    # environment block removed for YAML validity
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Validate composer.json and composer.lock
+        run: composer validate --strict
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+      - name: Run tests
+        run: vendor/bin/phpunit --testdox
       - name: Create GitHub Release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.ref_name }}
-          name: Release ${{ github.ref_name }}
+          name: Synchrenity ${{ github.ref_name }}
           draft: false
           prerelease: false
           generate_release_notes: true
           files: |
+            composer.json
+            composer.lock
             CHANGELOG.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
