@@ -299,6 +299,7 @@ class SynchrenityAuditTrail
             }
         }
         file_put_contents($this->logFile, implode(PHP_EOL, $keep) . PHP_EOL);
+
         if ($archive) {
             file_put_contents($this->logFile . '.archive', implode(PHP_EOL, $archive) . PHP_EOL, FILE_APPEND | LOCK_EX);
         }
