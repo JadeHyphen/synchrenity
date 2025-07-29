@@ -302,7 +302,6 @@ class SynchrenityCore
     /**
      * Plugin manager module
      *
-     *
      * @var mixed|null
      */
     public $pluginManager = null;
@@ -311,7 +310,6 @@ class SynchrenityCore
     /**
      * Health check module
      *
-     *
      * @var mixed|null
      */
     public $health = null;
@@ -319,7 +317,6 @@ class SynchrenityCore
     
     /**
      * Test utilities module
-     *
      *
      * @var mixed|null
      */
