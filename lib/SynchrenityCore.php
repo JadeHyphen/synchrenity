@@ -1,17 +1,31 @@
 <?php
 
-declare(strict_types=1);
-// lib/SynchrenityCore.php
-
 namespace Synchrenity;
 
-/**
- * SynchrenityCore: The main framework class
- * - Manages configuration, environment, request/response, error handling, service providers, events, and CLI integration.
- * - Designed for security, scalability, and developer experience.
- */
-class SynchrenityCore
-{
+class SynchrenityCore {
+    /**
+     * Modern logging: SynchrenityLogger instance (file, stdout, JSON, rotation, context, channels)
+     */
+    public $logger;
+
+    // --- ADVANCED: Metrics/observability ---
+    protected $metrics = [];
+    public function recordMetric($name, $value, $tags = [])
+    {
+        $this->metrics[] = ['name' => $name,'value' => $value,'tags' => $tags,'time' => time()];
+    }
+    public function getMetrics()
+    {
+        return $this->metrics;
+    }
+
+    public function log($level, $msg, $context = [])
+    {
+        if ($this->logger) {
+            return $this->logger->log($level, $msg, $context);
+        }
+        error_log("[$level] $msg " . json_encode($context));
+    }
     // --- ADVANCED: Middleware pipeline ---
     protected $middleware = [];
     public function addMiddleware($mw)
@@ -65,49 +79,6 @@ class SynchrenityCore
         } elseif (file_exists('.env')) {
             $this->env = parse_ini_file('.env');
         }
-    }
-
-    // --- ADVANCED: Dependency Injection Container ---
-    protected $container = [];
-    public function bind($name, $resolver)
-    {
-        $this->container[$name] = $resolver;
-    }
-    public function make($name, ...$args)
-    {
-        if (!isset($this->container[$name])) {
-            throw new \RuntimeException("Service $name not bound");
-        }
-
-        return call_user_func_array($this->container[$name], $args);
-    }
-
-    // --- ADVANCED: Advanced logging ---
-    /**
-     * Modern logging: SynchrenityLogger instance (file, stdout, JSON, rotation, context, channels)
-     */
-    public $logger;
-    public function setLogger($logger)
-    {
-        $this->logger = $logger;
-    }
-    public function log($level, $msg, $context = [])
-    {
-        if ($this->logger) {
-            return $this->logger->log($level, $msg, $context);
-        }
-        error_log("[$level] $msg " . json_encode($context));
-    }
-
-    // --- ADVANCED: Metrics/observability ---
-    protected $metrics = [];
-    public function recordMetric($name, $value, $tags = [])
-    {
-        $this->metrics[] = ['name' => $name,'value' => $value,'tags' => $tags,'time' => time()];
-    }
-    public function getMetrics()
-    {
-        return $this->metrics;
     }
 
     // --- ADVANCED: Graceful shutdown (signal handling) ---
