@@ -1,5 +1,9 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Tests;
+
 // Example unit test for Synchrenity
 use PHPUnit\Framework\TestCase;
 

@@ -1,14 +1,15 @@
 <?php
-namespace Synchrenity\Console;
 
-use Synchrenity\SynchrenityCore;
+declare(strict_types=1);
+
+namespace Synchrenity\Console;
 
 /**
  * SynchrenityOptimizeCommand: Checks for dependency errors, missing packages, and common bugs
  */
 class SynchrenityOptimizeCommand extends \Synchrenity\SynchrenityCommand
 {
-    protected $name = 'optimize';
+    protected $name        = 'optimize';
     protected $description = 'Check for dependency errors, missing packages, and common bugs.';
 
     public function handle(array $args, array $options, array $flags)
@@ -18,12 +19,13 @@ class SynchrenityOptimizeCommand extends \Synchrenity\SynchrenityCommand
         // Check Composer dependencies
         if (!file_exists(__DIR__ . '/../../vendor/autoload.php')) {
             $this->error('Composer autoload not found. Run "composer install".');
+
             return 1;
         }
         $this->info('Composer autoload found.');
 
         // Check for missing required packages
-        $missing = [];
+        $missing  = [];
         $required = [
             'phpunit/phpunit',
             'symfony/console',
@@ -33,13 +35,15 @@ class SynchrenityOptimizeCommand extends \Synchrenity\SynchrenityCommand
             'symfony/options-resolver',
             'symfony/process',
             'symfony/stopwatch',
-            'symfony/string'
+            'symfony/string',
         ];
+
         foreach ($required as $pkg) {
             if (!class_exists(str_replace('/', '\\', $pkg))) {
                 $missing[] = $pkg;
             }
         }
+
         if ($missing) {
             $this->warn('Missing required packages: ' . implode(', ', $missing));
         } else {
@@ -52,6 +56,7 @@ class SynchrenityOptimizeCommand extends \Synchrenity\SynchrenityCommand
         } else {
             $this->info('Config file found.');
         }
+
         if (!file_exists(__DIR__ . '/../../.env')) {
             $this->warn('Missing .env file.');
         } else {
@@ -59,6 +64,7 @@ class SynchrenityOptimizeCommand extends \Synchrenity\SynchrenityCommand
         }
 
         $this->info('Optimization checks complete.');
+
         return 0;
     }
 }

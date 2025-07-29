@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Synchrenity\Weave\Components;
 
 use Synchrenity\Pagination\SynchrenityPaginator;
@@ -28,54 +31,58 @@ class WeavePagination
     public static function render(SynchrenityPaginator $paginator, $options = [])
     {
         $links = $paginator->links();
-        $meta = $paginator->toArray()['meta'];
+        $meta  = $paginator->toArray()['meta'];
+
         // API-driven UI: output as JSON if requested
         if (!empty($options['as_json'])) {
             $json = [
-                'meta' => $meta,
-                'links' => $links,
+                'meta'    => $meta,
+                'links'   => $links,
                 'options' => $options,
             ];
+
             // Optionally include data if requested
             if (!empty($options['include_data'])) {
                 $json['data'] = $paginator->toArray()['data'];
             }
-            return json_encode($json, JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE|JSON_PRETTY_PRINT);
-        }
-        $ariaLabel = $options['aria_label'] ?? 'Pagination Navigation';
-        $navClass = $options['class'] ?? 'pagination-nav';
-        $ulClass = $options['ul_class'] ?? 'pagination-list';
-        $liClass = $options['li_class'] ?? 'pagination-item';
-        $aClass = $options['a_class'] ?? 'pagination-link';
-        $activeClass = $options['active_class'] ?? 'active';
-        $disabledClass = $options['disabled_class'] ?? 'disabled';
-        $theme = $options['theme'] ?? 'auto'; // 'auto', 'dark', 'light'
-        $responsive = $options['responsive'] ?? true;
-        $ariaRole = $options['aria_role'] ?? 'navigation';
-        $buttonElement = $options['button_element'] ?? 'a'; // 'a' or 'button'
-        $ssrFallback = $options['ssr_fallback'] ?? false;
-        $showFirstLast = $options['show_first_last'] ?? true;
-        $showEllipsis = $options['show_ellipsis'] ?? true;
-        $showNumbers = $options['show_numbers'] ?? true;
-        $showPrevNext = $options['show_prev_next'] ?? true;
-        $ariaCurrent = $options['aria_current'] ?? true;
-        $showPageSize = $options['show_page_size'] ?? false;
-        $pageSizeOptions = $options['page_size_options'] ?? [10, 25, 50, 100];
-        $showTotal = $options['show_total'] ?? true;
-        $labelPrev = $options['label_prev'] ?? 'Prev';
-        $labelNext = $options['label_next'] ?? 'Next';
-        $labelFirst = $options['label_first'] ?? 'First';
-        $labelLast = $options['label_last'] ?? 'Last';
-        $iconPrev = $options['icon_prev'] ?? '';
-        $iconNext = $options['icon_next'] ?? '';
-        $iconFirst = $options['icon_first'] ?? '';
-        $iconLast = $options['icon_last'] ?? '';
-        $customRender = $options['custom_render'] ?? null;
 
-        $themeClass = $theme === 'dark' ? 'pagination-dark' : ($theme === 'light' ? 'pagination-light' : '');
+            return json_encode($json, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+        }
+        $ariaLabel       = $options['aria_label']        ?? 'Pagination Navigation';
+        $navClass        = $options['class']             ?? 'pagination-nav';
+        $ulClass         = $options['ul_class']          ?? 'pagination-list';
+        $liClass         = $options['li_class']          ?? 'pagination-item';
+        $aClass          = $options['a_class']           ?? 'pagination-link';
+        $activeClass     = $options['active_class']      ?? 'active';
+        $disabledClass   = $options['disabled_class']    ?? 'disabled';
+        $theme           = $options['theme']             ?? 'auto'; // 'auto', 'dark', 'light'
+        $responsive      = $options['responsive']        ?? true;
+        $ariaRole        = $options['aria_role']         ?? 'navigation';
+        $buttonElement   = $options['button_element']    ?? 'a'; // 'a' or 'button'
+        $ssrFallback     = $options['ssr_fallback']      ?? false;
+        $showFirstLast   = $options['show_first_last']   ?? true;
+        $showEllipsis    = $options['show_ellipsis']     ?? true;
+        $showNumbers     = $options['show_numbers']      ?? true;
+        $showPrevNext    = $options['show_prev_next']    ?? true;
+        $ariaCurrent     = $options['aria_current']      ?? true;
+        $showPageSize    = $options['show_page_size']    ?? false;
+        $pageSizeOptions = $options['page_size_options'] ?? [10, 25, 50, 100];
+        $showTotal       = $options['show_total']        ?? true;
+        $labelPrev       = $options['label_prev']        ?? 'Prev';
+        $labelNext       = $options['label_next']        ?? 'Next';
+        $labelFirst      = $options['label_first']       ?? 'First';
+        $labelLast       = $options['label_last']        ?? 'Last';
+        $iconPrev        = $options['icon_prev']         ?? '';
+        $iconNext        = $options['icon_next']         ?? '';
+        $iconFirst       = $options['icon_first']        ?? '';
+        $iconLast        = $options['icon_last']         ?? '';
+        $customRender    = $options['custom_render']     ?? null;
+
+        $themeClass      = $theme === 'dark' ? 'pagination-dark' : ($theme === 'light' ? 'pagination-light' : '');
         $responsiveClass = $responsive ? 'pagination-responsive' : '';
-        $html = '<nav class="'.$navClass.' '.$themeClass.' '.$responsiveClass.'" role="'.$ariaRole.'" aria-label="'.htmlspecialchars($ariaLabel).'" aria-live="polite">';
+        $html            = '<nav class="'.$navClass.' '.$themeClass.' '.$responsiveClass.'" role="'.$ariaRole.'" aria-label="'.htmlspecialchars($ariaLabel).'" aria-live="polite">';
         $html .= '<ul class="'.$ulClass.'" tabindex="0" data-pagination="true">';
+
         // Loading state
         if (!empty($options['loading'])) {
             $html .= '<div class="pagination-loading">'.htmlspecialchars($options['loading']).'</div>';
@@ -139,14 +146,19 @@ class WeavePagination
         // Page numbers
         if ($showNumbers) {
             $start = max(1, $meta['current_page'] - 2);
-            $end = min($meta['last_page'], $meta['current_page'] + 2);
+            $end   = min($meta['last_page'], $meta['current_page'] + 2);
+
             for ($i = $start; $i <= $end; $i++) {
-                $link = $links[$i - 1];
+                $link     = $links[$i - 1];
                 $isActive = $link['active'];
-                $classes = $liClass;
-                if ($isActive) $classes .= ' '.$activeClass;
+                $classes  = $liClass;
+
+                if ($isActive) {
+                    $classes .= ' '.$activeClass;
+                }
                 $aria = $isActive && $ariaCurrent ? ' aria-current="page"' : '';
                 $html .= '<li class="'.$classes.'">';
+
                 if ($isActive) {
                     $html .= '<span class="'.$aClass.'"'.$aria.'>'.$link['page'].'</span>';
                 } else {
@@ -175,9 +187,10 @@ class WeavePagination
 
         // Last page
         if ($showFirstLast && $meta['current_page'] < $meta['last_page']) {
-            $lastTag = $buttonElement === 'button' ? '<button type="button" class="'.$aClass.'">'.($iconLast ?: $labelLast).'</button>' : '<a href="'.$links[$meta['last_page']-1]['url'].'" class="'.$aClass.'">'.($iconLast ?: $labelLast).'</a>';
+            $lastTag = $buttonElement === 'button' ? '<button type="button" class="'.$aClass.'">'.($iconLast ?: $labelLast).'</button>' : '<a href="'.$links[$meta['last_page'] - 1]['url'].'" class="'.$aClass.'">'.($iconLast ?: $labelLast).'</a>';
             $html .= '<li class="'.$liClass.' '.$disabledClass.'">'.$lastTag.'</li>';
         }
+
         // Responsive CSS (inline for demo, move to stylesheet in production)
         if ($responsive) {
             $html .= '<style>@media (max-width:600px){.pagination-list{flex-wrap:wrap;}.pagination-item{margin:2px;}}</style>';
@@ -202,7 +215,7 @@ class WeavePagination
 
         // SSR fallback
         if ($ssrFallback) {
-            $html .= '<noscript><div class="pagination-ssr">'.htmlspecialchars("Pagination requires JavaScript for full functionality.").'</div></noscript>';
+            $html .= '<noscript><div class="pagination-ssr">'.htmlspecialchars('Pagination requires JavaScript for full functionality.').'</div></noscript>';
         }
 
         $html .= '</ul>';
@@ -212,6 +225,7 @@ class WeavePagination
             $html .= '<form method="get" class="pagination-size-form" style="display:inline-block;margin-left:1em;">';
             $html .= '<label for="page-size-select">Page size:</label> ';
             $html .= '<select id="page-size-select" name="per_page" onchange="this.form.submit()">';
+
             foreach ($pageSizeOptions as $size) {
                 $selected = ($meta['per_page'] == $size) ? ' selected' : '';
                 $html .= '<option value="'.$size.'"'.$selected.'>'.$size.'</option>';
@@ -231,8 +245,14 @@ class WeavePagination
         if (!empty($options['seo'])) {
             $canonical = $links[$meta['current_page'] - 1]['url'] ?? '';
             $html .= '<link rel="canonical" href="'.$canonical.'">';
-            if ($meta['current_page'] > 1) $html .= '<link rel="prev" href="'.$links[$meta['current_page']-2]['url'].'">';
-            if ($meta['current_page'] < $meta['last_page']) $html .= '<link rel="next" href="'.$links[$meta['current_page']]['url'].'">';
+
+            if ($meta['current_page'] > 1) {
+                $html .= '<link rel="prev" href="'.$links[$meta['current_page'] - 2]['url'].'">';
+            }
+
+            if ($meta['current_page'] < $meta['last_page']) {
+                $html .= '<link rel="next" href="'.$links[$meta['current_page']]['url'].'">';
+            }
         }
 
         // Custom render hook

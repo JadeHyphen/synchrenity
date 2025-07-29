@@ -1,7 +1,11 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Synchrenity\Queue;
 
-interface SynchrenityJobQueueProviderInterface {
+interface SynchrenityJobQueueProviderInterface
+{
     // Core job queue operations
     public function dispatch($job, $delay = 0, $retries = 0, $priority = 0, $dependencies = []);
     public function process();

@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Synchrenity\Http;
 
 /**
@@ -6,15 +9,15 @@ namespace Synchrenity\Http;
  */
 class SynchrenityCookie
 {
-    protected $secret = 'synchrenity_cookie_secret';
+    protected $secret        = 'synchrenity_cookie_secret';
     protected $encryptionKey = 'synchrenity_cookie_enc_key';
-    protected $plugins = [];
-    protected $events = [];
-    protected $metrics = [
-        'set' => 0,
-        'get' => 0,
-        'delete' => 0,
-        'consent' => 0
+    protected $plugins       = [];
+    protected $events        = [];
+    protected $metrics       = [
+        'set'     => 0,
+        'get'     => 0,
+        'delete'  => 0,
+        'consent' => 0,
     ];
     protected $context = [];
 
@@ -24,38 +27,46 @@ class SynchrenityCookie
             return false;
         }
         $this->metrics['set']++;
-        $signed = $this->sign($value);
+        $signed    = $this->sign($value);
         $encrypted = $this->encrypt($signed);
-        $params = [
-            'expires' => $expire,
-            'path' => '/',
-            'secure' => $secure,
+        $params    = [
+            'expires'  => $expire,
+            'path'     => '/',
+            'secure'   => $secure,
             'httponly' => $httpOnly,
-            'samesite' => $sameSite
+            'samesite' => $sameSite,
         ];
+
         if (!empty($domain)) {
             $params['domain'] = $domain;
         }
         setcookie($name, $encrypted, $params);
         $this->triggerEvent('set', $name);
+
         foreach ($this->plugins as $plugin) {
-            if (is_callable([$plugin, 'onSet'])) $plugin->onSet($name, $value, $this);
+            if (is_callable([$plugin, 'onSet'])) {
+                $plugin->onSet($name, $value, $this);
+            }
         }
+
         return true;
     }
 
     public function setPersistentLogin($userId, $token, $expire = 2592000)
     {
         $data = json_encode(['user_id' => $userId, 'token' => $token]);
+
         return $this->set('persistent_login', $data, time() + $expire, true, true, 'Lax');
     }
 
     public function getPersistentLogin()
     {
         $data = $this->get('persistent_login');
+
         if ($data) {
             return json_decode($data, true);
         }
+
         return null;
     }
 
@@ -93,13 +104,20 @@ class SynchrenityCookie
     public function get($name)
     {
         $this->metrics['get']++;
-        if (!isset($_COOKIE[$name])) return null;
-        $decrypted = $this->decrypt($_COOKIE[$name]);
-        $verified = $this->verify($decrypted);
-        $this->triggerEvent('get', $name);
-        foreach ($this->plugins as $plugin) {
-            if (is_callable([$plugin, 'onGet'])) $verified = $plugin->onGet($name, $verified, $this);
+
+        if (!isset($_COOKIE[$name])) {
+            return null;
         }
+        $decrypted = $this->decrypt($_COOKIE[$name]);
+        $verified  = $this->verify($decrypted);
+        $this->triggerEvent('get', $name);
+
+        foreach ($this->plugins as $plugin) {
+            if (is_callable([$plugin, 'onGet'])) {
+                $verified = $plugin->onGet($name, $verified, $this);
+            }
+        }
+
         return $verified;
     }
 
@@ -109,8 +127,11 @@ class SynchrenityCookie
         setcookie($name, '', time() - 3600, '/');
         unset($_COOKIE[$name]);
         $this->triggerEvent('delete', $name);
+
         foreach ($this->plugins as $plugin) {
-            if (is_callable([$plugin, 'onDelete'])) $plugin->onDelete($name, $this);
+            if (is_callable([$plugin, 'onDelete'])) {
+                $plugin->onDelete($name, $this);
+            }
         }
     }
 
@@ -122,45 +143,80 @@ class SynchrenityCookie
     protected function verify($signed)
     {
         $parts = explode('|', $signed);
-        if (count($parts) !== 2) return null;
+
+        if (count($parts) !== 2) {
+            return null;
+        }
+
         if (hash_hmac('sha256', $parts[0], $this->secret) === $parts[1]) {
             return $parts[0];
         }
+
         return null;
     }
 
     protected function encrypt($data)
     {
-        if (!$this->encryptionKey) return base64_encode($data);
+        if (!$this->encryptionKey) {
+            return base64_encode($data);
+        }
         $iv = substr(hash('sha256', $this->encryptionKey), 0, 16);
+
         return base64_encode(openssl_encrypt($data, 'aes-256-cbc', $this->encryptionKey, 0, $iv));
     }
 
     protected function decrypt($data)
     {
-        if (!$this->encryptionKey) return base64_decode($data);
-        $iv = substr(hash('sha256', $this->encryptionKey), 0, 16);
+        if (!$this->encryptionKey) {
+            return base64_decode($data);
+        }
+        $iv  = substr(hash('sha256', $this->encryptionKey), 0, 16);
         $dec = openssl_decrypt(base64_decode($data), 'aes-256-cbc', $this->encryptionKey, 0, $iv);
+
         return $dec === false ? null : $dec;
     }
 
     // Plugin system
-    public function registerPlugin($plugin) { $this->plugins[] = $plugin; }
+    public function registerPlugin($plugin)
+    {
+        $this->plugins[] = $plugin;
+    }
 
     // Event system
-    public function on($event, callable $cb) { $this->events[$event][] = $cb; }
-    protected function triggerEvent($event, $data = null) {
-        foreach ($this->events[$event] ?? [] as $cb) call_user_func($cb, $data, $this);
+    public function on($event, callable $cb)
+    {
+        $this->events[$event][] = $cb;
+    }
+    protected function triggerEvent($event, $data = null)
+    {
+        foreach ($this->events[$event] ?? [] as $cb) {
+            call_user_func($cb, $data, $this);
+        }
     }
 
     // Context
-    public function setContext($key, $value) { $this->context[$key] = $value; }
-    public function getContext($key, $default = null) { return $this->context[$key] ?? $default; }
+    public function setContext($key, $value)
+    {
+        $this->context[$key] = $value;
+    }
+    public function getContext($key, $default = null)
+    {
+        return $this->context[$key] ?? $default;
+    }
 
     // Metrics
-    public function getMetrics() { return $this->metrics; }
+    public function getMetrics()
+    {
+        return $this->metrics;
+    }
 
     // Introspection
-    public function getPlugins() { return $this->plugins; }
-    public function getEvents() { return $this->events; }
+    public function getPlugins()
+    {
+        return $this->plugins;
+    }
+    public function getEvents()
+    {
+        return $this->events;
+    }
 }

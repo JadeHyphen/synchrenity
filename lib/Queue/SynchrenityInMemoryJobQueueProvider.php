@@ -1,46 +1,70 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Synchrenity\Queue;
 
-class SynchrenityInMemoryJobQueueProvider implements SynchrenityJobQueueProviderInterface {
-    protected $queue = [];
-    protected $paused = false;
+class SynchrenityInMemoryJobQueueProvider implements SynchrenityJobQueueProviderInterface
+{
+    protected $queue           = [];
+    protected $paused          = false;
     protected $deadLetterQueue = [];
-    protected $dependencies = [];
-    protected $priorities = [];
-    protected $stats = [ 'dispatched'=>0, 'completed'=>0, 'failed'=>0, 'retried'=>0 ];
+    protected $dependencies    = [];
+    protected $priorities      = [];
+    protected $stats           = [ 'dispatched' => 0, 'completed' => 0, 'failed' => 0, 'retried' => 0 ];
 
-    public function dispatch($job, $delay = 0, $retries = 0, $priority = 0, $dependencies = []) {
+    public function dispatch($job, $delay = 0, $retries = 0, $priority = 0, $dependencies = [])
+    {
         // Ensure $priority and $dependencies are always set
-        if (!isset($priority)) $priority = 0;
-        if (!isset($dependencies)) $dependencies = [];
+        if (!isset($priority)) {
+            $priority = 0;
+        }
+
+        if (!isset($dependencies)) {
+            $dependencies = [];
+        }
         $entry = [
-            'id' => uniqid('job_', true),
-            'job' => $job,
-            'status' => 'pending',
-            'created' => time(),
-            'delay' => $delay,
-            'retries' => $retries,
-            'attempts' => 0,
-            'priority' => $priority,
+            'id'           => uniqid('job_', true),
+            'job'          => $job,
+            'status'       => 'pending',
+            'created'      => time(),
+            'delay'        => $delay,
+            'retries'      => $retries,
+            'attempts'     => 0,
+            'priority'     => $priority,
             'dependencies' => $dependencies,
-            'result' => null,
-            'error' => null
+            'result'       => null,
+            'error'        => null,
         ];
-        $this->queue[] = $entry;
-        $this->priorities[$entry['id']] = $priority;
+        $this->queue[]                    = $entry;
+        $this->priorities[$entry['id']]   = $priority;
         $this->dependencies[$entry['id']] = $dependencies;
         $this->stats['dispatched']++;
         $this->sortQueue();
+
         return $entry['id'];
     }
 
-    public function process() {
-        if ($this->paused) return;
+    public function process()
+    {
+        if ($this->paused) {
+            return;
+        }
+
         foreach ($this->queue as &$entry) {
-            if ($entry['status'] !== 'pending') continue;
-            if ($entry['delay'] > 0 && time() < $entry['created'] + $entry['delay']) continue;
-            if (!$this->dependenciesMet($entry['id'])) continue;
+            if ($entry['status'] !== 'pending') {
+                continue;
+            }
+
+            if ($entry['delay'] > 0 && time() < $entry['created'] + $entry['delay']) {
+                continue;
+            }
+
+            if (!$this->dependenciesMet($entry['id'])) {
+                continue;
+            }
             $entry['status'] = 'running';
+
             try {
                 if (is_object($entry['job']) && method_exists($entry['job'], 'run')) {
                     $result = $entry['job']->run();
@@ -54,12 +78,13 @@ class SynchrenityInMemoryJobQueueProvider implements SynchrenityJobQueueProvider
                 $this->stats['completed']++;
             } catch (\Exception $ex) {
                 $entry['attempts']++;
+
                 if ($entry['attempts'] <= $entry['retries']) {
                     $entry['status'] = 'pending';
                     $this->stats['retried']++;
                 } else {
-                    $entry['status'] = 'failed';
-                    $entry['error'] = $ex->getMessage();
+                    $entry['status']         = 'failed';
+                    $entry['error']          = $ex->getMessage();
                     $this->deadLetterQueue[] = $entry;
                     $this->stats['failed']++;
                 }
@@ -67,20 +92,34 @@ class SynchrenityInMemoryJobQueueProvider implements SynchrenityJobQueueProvider
         }
     }
 
-    public function getJobs($status = null) {
+    public function getJobs($status = null)
+    {
         if ($status) {
-            return array_values(array_filter($this->queue, function($j) use ($status) { return $j['status'] === $status; }));
+            return array_values(array_filter($this->queue, function ($j) use ($status) { return $j['status'] === $status; }));
         }
+
         return $this->queue;
     }
 
-    public function getJob($jobId) {
-        foreach ($this->queue as $entry) if ($entry['id'] === $jobId) return $entry;
-        foreach ($this->deadLetterQueue as $entry) if ($entry['id'] === $jobId) return $entry;
+    public function getJob($jobId)
+    {
+        foreach ($this->queue as $entry) {
+            if ($entry['id'] === $jobId) {
+                return $entry;
+            }
+        }
+
+        foreach ($this->deadLetterQueue as $entry) {
+            if ($entry['id'] === $jobId) {
+                return $entry;
+            }
+        }
+
         return null;
     }
 
-    public function cancelJob($jobId) {
+    public function cancelJob($jobId)
+    {
         foreach ($this->queue as &$entry) {
             if ($entry['id'] === $jobId) {
                 $entry['status'] = 'cancelled';
@@ -89,13 +128,24 @@ class SynchrenityInMemoryJobQueueProvider implements SynchrenityJobQueueProvider
         }
     }
 
-    public function pause() { $this->paused = true; }
-    public function resume() { $this->paused = false; }
-    public function isPaused() { return $this->paused; }
+    public function pause()
+    {
+        $this->paused = true;
+    }
+    public function resume()
+    {
+        $this->paused = false;
+    }
+    public function isPaused()
+    {
+        return $this->paused;
+    }
 
     // Advanced job management
-    public function setPriority($jobId, $priority) {
+    public function setPriority($jobId, $priority)
+    {
         $this->priorities[$jobId] = $priority;
+
         foreach ($this->queue as &$entry) {
             if ($entry['id'] === $jobId) {
                 $entry['priority'] = $priority;
@@ -104,8 +154,10 @@ class SynchrenityInMemoryJobQueueProvider implements SynchrenityJobQueueProvider
         }
         $this->sortQueue();
     }
-    public function addDependency($jobId, $dependsOnJobId) {
+    public function addDependency($jobId, $dependsOnJobId)
+    {
         $this->dependencies[$jobId][] = $dependsOnJobId;
+
         foreach ($this->queue as &$entry) {
             if ($entry['id'] === $jobId) {
                 $entry['dependencies'][] = $dependsOnJobId;
@@ -113,81 +165,121 @@ class SynchrenityInMemoryJobQueueProvider implements SynchrenityJobQueueProvider
             }
         }
     }
-    public function getDependencies($jobId) {
+    public function getDependencies($jobId)
+    {
         return $this->dependencies[$jobId] ?? [];
     }
-    public function getDeadLetterQueue() {
+    public function getDeadLetterQueue()
+    {
         return $this->deadLetterQueue;
     }
-    public function retryJob($jobId) {
+    public function retryJob($jobId)
+    {
         foreach ($this->deadLetterQueue as $i => $entry) {
             if ($entry['id'] === $jobId) {
-                $entry['status'] = 'pending';
+                $entry['status']   = 'pending';
                 $entry['attempts'] = 0;
-                $entry['error'] = null;
-                $this->queue[] = $entry;
+                $entry['error']    = null;
+                $this->queue[]     = $entry;
                 unset($this->deadLetterQueue[$i]);
                 $this->sortQueue();
                 break;
             }
         }
     }
-    public function updateJob($jobId, $data) {
+    public function updateJob($jobId, $data)
+    {
         foreach ($this->queue as &$entry) {
             if ($entry['id'] === $jobId) {
-                foreach ($data as $k => $v) $entry[$k] = $v;
+                foreach ($data as $k => $v) {
+                    $entry[$k] = $v;
+                }
                 break;
             }
         }
     }
-    public function jobExists($jobId) {
-        foreach ($this->queue as $entry) if ($entry['id'] === $jobId) return true;
-        foreach ($this->deadLetterQueue as $entry) if ($entry['id'] === $jobId) return true;
+    public function jobExists($jobId)
+    {
+        foreach ($this->queue as $entry) {
+            if ($entry['id'] === $jobId) {
+                return true;
+            }
+        }
+
+        foreach ($this->deadLetterQueue as $entry) {
+            if ($entry['id'] === $jobId) {
+                return true;
+            }
+        }
+
         return false;
     }
-    public function getJobStatus($jobId) {
+    public function getJobStatus($jobId)
+    {
         $job = $this->getJob($jobId);
+
         return $job ? $job['status'] : null;
     }
-    public function getJobResult($jobId) {
+    public function getJobResult($jobId)
+    {
         $job = $this->getJob($jobId);
+
         return $job ? ($job['result'] ?? null) : null;
     }
 
     // Metrics and introspection
-    public function getQueueLength($status = null) {
-        if ($status) return count($this->getJobs($status));
+    public function getQueueLength($status = null)
+    {
+        if ($status) {
+            return count($this->getJobs($status));
+        }
+
         return count($this->queue);
     }
-    public function getStats() {
+    public function getStats()
+    {
         return $this->stats;
     }
-    public function getNextScheduledJob() {
+    public function getNextScheduledJob()
+    {
         $pending = $this->getJobs('pending');
-        if (empty($pending)) return null;
-        usort($pending, function($a, $b) {
+
+        if (empty($pending)) {
+            return null;
+        }
+        usort($pending, function ($a, $b) {
             return ($a['created'] + $a['delay']) <=> ($b['created'] + $b['delay']);
         });
+
         return $pending[0];
     }
-    public function getFailedJobs() {
+    public function getFailedJobs()
+    {
         return $this->getJobs('failed');
     }
-    public function getCompletedJobs() {
+    public function getCompletedJobs()
+    {
         return $this->getJobs('completed');
     }
 
     // Helpers
-    protected function dependenciesMet($jobId) {
+    protected function dependenciesMet($jobId)
+    {
         $deps = $this->dependencies[$jobId] ?? [];
+
         foreach ($deps as $depId) {
             $dep = $this->getJob($depId);
-            if (!$dep || $dep['status'] !== 'completed') return false;
+
+            if (!$dep || $dep['status'] !== 'completed') {
+                return false;
+            }
         }
+
         return true;
     }
-    protected function sortQueue() {
-        usort($this->queue, function($a, $b) {
+    protected function sortQueue()
+    {
+        usort($this->queue, function ($a, $b) {
             return $b['priority'] <=> $a['priority'];
         });
     }

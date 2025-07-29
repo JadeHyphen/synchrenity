@@ -1,14 +1,18 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Synchrenity\Commands;
 
 use Synchrenity\SynchrenityCommand;
 
 class SynchrenityMakeMigrationCommand extends SynchrenityCommand
 {
-    protected $name = 'make:migration';
+    protected $name        = 'make:migration';
     protected $description = 'Create a new migration file.';
 
-    public function __construct($kernel = null) {
+    public function __construct($kernel = null)
+    {
         parent::__construct($kernel);
     }
 
@@ -17,6 +21,7 @@ class SynchrenityMakeMigrationCommand extends SynchrenityCommand
         $this->info('Creating new migration file...');
         // ...migration file creation logic...
         $this->info('Migration file created.');
+
         return 0;
     }
 }

@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Synchrenity\Http;
 
 /**
@@ -7,24 +10,24 @@ namespace Synchrenity\Http;
 
 class SynchrenityRouter
 {
-    protected $routes = [];
-    protected $namedRoutes = [];
+    protected $routes           = [];
+    protected $namedRoutes      = [];
     protected $globalMiddleware = [];
-    protected $constraints = [];
-    protected $fallbackHandler = null;
-    protected $redirects = [];
-    protected $subdomainRoutes = [];
-    protected $routeCache = [];
+    protected $constraints      = [];
+    protected $fallbackHandler  = null;
+    protected $redirects        = [];
+    protected $subdomainRoutes  = [];
+    protected $routeCache       = [];
     protected $eventManager;
     protected $rateLimiters = [];
-    protected $priorities = [];
-    protected $versions = [];
+    protected $priorities   = [];
+    protected $versions     = [];
     // Advanced
-    protected $routeTags = [];
-    protected $routeHealth = [];
+    protected $routeTags    = [];
+    protected $routeHealth  = [];
     protected $routeMetrics = [];
-    protected $plugins = [];
-    protected $routeEvents = [];
+    protected $plugins      = [];
+    protected $routeEvents  = [];
 
     public function __construct($eventManager = null)
     {
@@ -34,21 +37,23 @@ class SynchrenityRouter
     public function add($method, $path, $handler, $middleware = [], $name = null, $constraints = [], $tags = [], $health = 'healthy', $deprecated = false)
     {
         $route = [
-            'method' => strtoupper($method),
-            'path' => $path,
-            'handler' => $handler,
-            'middleware' => $middleware,
+            'method'      => strtoupper($method),
+            'path'        => $path,
+            'handler'     => $handler,
+            'middleware'  => $middleware,
             'constraints' => $constraints,
-            'priority' => $this->priorities[$path] ?? 0,
-            'version' => $this->versions[$path] ?? null,
-            'tags' => $tags,
-            'health' => $health,
-            'deprecated' => $deprecated
+            'priority'    => $this->priorities[$path] ?? 0,
+            'version'     => $this->versions[$path]   ?? null,
+            'tags'        => $tags,
+            'health'      => $health,
+            'deprecated'  => $deprecated,
         ];
         $this->routes[] = $route;
+
         if ($name) {
             $this->namedRoutes[$name] = $route;
         }
+
         // Plugin hooks
         foreach ($this->plugins as $plugin) {
             if (is_callable([$plugin, 'onRouteAdd'])) {
@@ -59,49 +64,73 @@ class SynchrenityRouter
     }
 
     // Plugin system
-    public function registerPlugin($plugin) { $this->plugins[] = $plugin; }
+    public function registerPlugin($plugin)
+    {
+        $this->plugins[] = $plugin;
+    }
 
     // Route event system
-    public function onRouteEvent($event, callable $cb) { $this->routeEvents[$event][] = $cb; }
-    protected function triggerRouteEvent($event, $route) {
-        foreach ($this->routeEvents[$event] ?? [] as $cb) call_user_func($cb, $route, $this);
+    public function onRouteEvent($event, callable $cb)
+    {
+        $this->routeEvents[$event][] = $cb;
+    }
+    protected function triggerRouteEvent($event, $route)
+    {
+        foreach ($this->routeEvents[$event] ?? [] as $cb) {
+            call_user_func($cb, $route, $this);
+        }
     }
 
     // Tag routes
-    public function tagRoute($path, $tag) {
+    public function tagRoute($path, $tag)
+    {
         $this->routeTags[$path][] = $tag;
     }
-    public function getRouteTags($path) {
+    public function getRouteTags($path)
+    {
         return $this->routeTags[$path] ?? [];
     }
 
     // Route health
-    public function setRouteHealth($path, $status) {
+    public function setRouteHealth($path, $status)
+    {
         $this->routeHealth[$path] = $status;
     }
-    public function getRouteHealth($path) {
+    public function getRouteHealth($path)
+    {
         return $this->routeHealth[$path] ?? 'unknown';
     }
 
     // Route metrics
-    public function incrementRouteMetric($path, $metric) {
-        if (!isset($this->routeMetrics[$path])) $this->routeMetrics[$path] = [];
-        if (!isset($this->routeMetrics[$path][$metric])) $this->routeMetrics[$path][$metric] = 0;
+    public function incrementRouteMetric($path, $metric)
+    {
+        if (!isset($this->routeMetrics[$path])) {
+            $this->routeMetrics[$path] = [];
+        }
+
+        if (!isset($this->routeMetrics[$path][$metric])) {
+            $this->routeMetrics[$path][$metric] = 0;
+        }
         $this->routeMetrics[$path][$metric]++;
     }
-    public function getRouteMetrics($path) {
+    public function getRouteMetrics($path)
+    {
         return $this->routeMetrics[$path] ?? [];
     }
 
     // Route search/filter
-    public function findRoutes(callable $filter) {
+    public function findRoutes(callable $filter)
+    {
         return array_filter($this->routes, $filter);
     }
 
     // Deprecate route
-    public function deprecateRoute($path) {
+    public function deprecateRoute($path)
+    {
         foreach ($this->routes as &$route) {
-            if ($route['path'] === $path) $route['deprecated'] = true;
+            if ($route['path'] === $path) {
+                $route['deprecated'] = true;
+            }
         }
     }
 
@@ -114,6 +143,7 @@ class SynchrenityRouter
         $this->add('GET', "/$name/{id}/edit", [$controller, 'edit']);
         $this->add('PUT', "/$name/{id}", [$controller, 'update']);
         $this->add('DELETE', "/$name/{id}", [$controller, 'destroy']);
+
         // Add versioned resource routes
         if (!empty($this->versions)) {
             foreach ($this->versions as $path => $version) {
@@ -149,14 +179,18 @@ class SynchrenityRouter
 
     public function group($prefix, $callback, $middleware = [])
     {
-        $callback(new class($this, $prefix, $middleware) {
-            private $router, $prefix, $middleware;
-            public function __construct($router, $prefix, $middleware) {
-                $this->router = $router;
-                $this->prefix = $prefix;
+        $callback(new class ($this, $prefix, $middleware) {
+            private $router;
+            private $prefix;
+            private $middleware;
+            public function __construct($router, $prefix, $middleware)
+            {
+                $this->router     = $router;
+                $this->prefix     = $prefix;
                 $this->middleware = $middleware;
             }
-            public function add($method, $path, $handler, $mw = [], $name = null, $constraints = []) {
+            public function add($method, $path, $handler, $mw = [], $name = null, $constraints = [])
+            {
                 $this->router->add($method, $this->prefix . $path, $handler, array_merge($this->middleware, $mw), $name, $constraints);
             }
         });
@@ -165,11 +199,11 @@ class SynchrenityRouter
     public function subdomain($sub, $method, $path, $handler, $middleware = [], $name = null)
     {
         $this->subdomainRoutes[$sub][] = [
-            'method' => strtoupper($method),
-            'path' => $path,
-            'handler' => $handler,
+            'method'     => strtoupper($method),
+            'path'       => $path,
+            'handler'    => $handler,
             'middleware' => $middleware,
-            'name' => $name
+            'name'       => $name,
         ];
     }
 
@@ -185,16 +219,19 @@ class SynchrenityRouter
 
     public function match($request)
     {
-        $uri = $request->uri();
+        $uri    = $request->uri();
         $method = $request->method();
+
         // Check redirects
         if (isset($this->redirects[$uri])) {
             $redir = $this->redirects[$uri];
+
             return [['redirect' => true, 'to' => $redir['to'], 'status' => $redir['status']], []];
         }
         // Subdomain routing
-        $host = $_SERVER['HTTP_HOST'] ?? '';
-        $sub = explode('.', $host)[0] ?? '';
+        $host = $_SERVER['HTTP_HOST']  ?? '';
+        $sub  = explode('.', $host)[0] ?? '';
+
         if (isset($this->subdomainRoutes[$sub])) {
             foreach ($this->subdomainRoutes[$sub] as $route) {
                 if ($route['method'] === $method && $route['path'] === $uri) {
@@ -204,32 +241,44 @@ class SynchrenityRouter
         }
         // Route matching with constraints
         $sortedRoutes = $this->routes;
-        usort($sortedRoutes, function($a, $b) {
+        usort($sortedRoutes, function ($a, $b) {
             return ($b['priority'] ?? 0) <=> ($a['priority'] ?? 0);
         });
+
         foreach ($sortedRoutes as $route) {
-            if ($route['method'] !== $method) continue;
+            if ($route['method'] !== $method) {
+                continue;
+            }
+
             // Version check
             if (isset($route['version']) && $route['version'] !== null) {
-                if (!preg_match('#^/v' . $route['version'] . '#', $uri)) continue;
+                if (!preg_match('#^/v' . $route['version'] . '#', $uri)) {
+                    continue;
+                }
             }
-            $pattern = preg_replace_callback('#\{([a-zA-Z0-9_]+)\}#', function($m) use ($route) {
+            $pattern = preg_replace_callback('#\{([a-zA-Z0-9_]+)\}#', function ($m) use ($route) {
                 $param = $m[1];
                 $regex = $route['constraints'][$param] ?? '[^/]+';
+
                 return '(?P<' . $param . '>' . $regex . ')';
             }, $route['path']);
+
             if (preg_match('#^' . $pattern . '$#', $uri, $matches)) {
                 $params = array_filter($matches, 'is_string', ARRAY_FILTER_USE_KEY);
+
                 // Rate limiting
                 if (isset($this->rateLimiters[$route['path']])) {
                     $limiter = $this->rateLimiters[$route['path']];
+
                     if (!$limiter->allow($request)) {
                         return [null, []];
                     }
                 }
+
                 return [$route, $params];
             }
         }
+
         return [null, []];
     }
 
@@ -238,29 +287,36 @@ class SynchrenityRouter
         if ($this->eventManager) {
             $this->eventManager->dispatch('router.dispatch.before', $request);
         }
+
         foreach ($this->globalMiddleware as $mw) {
             $mw->handle($request);
         }
         list($route, $params) = $this->match($request);
+
         if ($route) {
             if (!empty($route['redirect'])) {
                 $resp = new \Synchrenity\Http\SynchrenityResponse('', $route['status'] ?? 302);
                 $resp->setHeader('Location', $route['to']);
                 $resp->send();
+
                 return $resp;
             }
+
             foreach ($route['middleware'] as $mw) {
                 $mw->handle($request);
             }
+
             // Secure input validation stub
             foreach ($params as $k => $v) {
                 if (isset($route['constraints'][$k]) && !preg_match('#' . $route['constraints'][$k] . '#', $v)) {
                     return new \Synchrenity\Http\SynchrenityResponse('Invalid parameter', 400);
                 }
             }
+
             // SEO helpers: set canonical URL header
             if (isset($route['name'])) {
                 $canonical = $this->url($route['name'], $params);
+
                 if ($canonical) {
                     if (method_exists($request, 'response')) {
                         $request->response()->setHeader('Link', '<' . $canonical . '>; rel="canonical"');
@@ -268,24 +324,32 @@ class SynchrenityRouter
                 }
             }
             $resp = call_user_func($route['handler'], $request, $params);
+
             if ($this->eventManager) {
                 $this->eventManager->dispatch('router.dispatch.after', $request, $resp);
             }
+
             return $resp;
         }
+
         if ($this->fallbackHandler) {
             return call_user_func($this->fallbackHandler, $request);
         }
+
         return new \Synchrenity\Http\SynchrenityResponse('Not Found', 404);
     }
 
     public function url($name, $params = [])
     {
-        if (!isset($this->namedRoutes[$name])) return null;
+        if (!isset($this->namedRoutes[$name])) {
+            return null;
+        }
         $path = $this->namedRoutes[$name]['path'];
+
         foreach ($params as $k => $v) {
             $path = str_replace('{' . $k . '}', $v, $path);
         }
+
         return $path;
     }
 
@@ -295,6 +359,7 @@ class SynchrenityRouter
         if ($filter && is_callable($filter)) {
             return array_values(array_filter($this->routes, $filter));
         }
+
         return $this->routes;
     }
 
@@ -322,28 +387,30 @@ class SynchrenityRouter
     public function testRoutes()
     {
         // Example: return all route paths for test assertions
-        return array_map(function($r) { return $r['path']; }, $this->routes);
+        return array_map(function ($r) { return $r['path']; }, $this->routes);
     }
 
     // Documentation helper: get all route metadata
     public function getRouteDocs($filter = null)
     {
         $routes = $this->routes;
+
         if ($filter && is_callable($filter)) {
             $routes = array_filter($routes, $filter);
         }
-        return array_map(function($r) {
+
+        return array_map(function ($r) {
             return [
-                'method' => $r['method'],
-                'path' => $r['path'],
-                'name' => $r['name'] ?? null,
+                'method'      => $r['method'],
+                'path'        => $r['path'],
+                'name'        => $r['name'] ?? null,
                 'constraints' => $r['constraints'],
-                'middleware' => $r['middleware'],
-                'priority' => $r['priority'] ?? 0,
-                'version' => $r['version'] ?? null,
-                'tags' => $r['tags'] ?? [],
-                'health' => $r['health'] ?? 'unknown',
-                'deprecated' => $r['deprecated'] ?? false
+                'middleware'  => $r['middleware'],
+                'priority'    => $r['priority']   ?? 0,
+                'version'     => $r['version']    ?? null,
+                'tags'        => $r['tags']       ?? [],
+                'health'      => $r['health']     ?? 'unknown',
+                'deprecated'  => $r['deprecated'] ?? false,
             ];
         }, $routes);
     }

@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Synchrenity\Support;
 
 /**
@@ -8,21 +11,21 @@ namespace Synchrenity\Support;
 class SynchrenityEventDispatcher
 {
     // Properties
-    protected $queue = [];
-    protected $listenerGroups = [];
-    protected $listenerTags = [];
-    protected $persistentStore = null; // file/db stub
-    protected $metrics = [];
-    protected $tracingEnabled = false;
-    protected $autoloadConfig = [];
-    protected $listeners = [];
-    protected $middleware = [];
-    protected $hooks = [];
-    protected $rateLimits = [];
-    protected $auditLog = [];
-    protected $context = [];
+    protected $queue              = [];
+    protected $listenerGroups     = [];
+    protected $listenerTags       = [];
+    protected $persistentStore    = null; // file/db stub
+    protected $metrics            = [];
+    protected $tracingEnabled     = false;
+    protected $autoloadConfig     = [];
+    protected $listeners          = [];
+    protected $middleware         = [];
+    protected $hooks              = [];
+    protected $rateLimits         = [];
+    protected $auditLog           = [];
+    protected $context            = [];
     protected $propagationStopped = false;
-    protected $throttleLimits = [];
+    protected $throttleLimits     = [];
 
     // Methods
     /**
@@ -34,10 +37,14 @@ class SynchrenityEventDispatcher
         if (!empty($options['auth']) && !$this->isAuthorized($options['auth'])) {
             throw new \Exception('Unauthorized event listener registration');
         }
+
         if (!is_callable($listener)) {
             throw new \InvalidArgumentException('Listener must be callable');
         }
-        if (!isset($this->listeners[$event])) $this->listeners[$event] = [];
+
+        if (!isset($this->listeners[$event])) {
+            $this->listeners[$event] = [];
+        }
         $this->listeners[$event][] = $listener;
     }
 
@@ -49,7 +56,10 @@ class SynchrenityEventDispatcher
         if (!is_callable($hook)) {
             throw new \InvalidArgumentException('Hook must be callable');
         }
-        if (!isset($this->hooks[$type])) $this->hooks[$type] = [];
+
+        if (!isset($this->hooks[$type])) {
+            $this->hooks[$type] = [];
+        }
         $this->hooks[$type][] = $hook;
     }
 
@@ -59,15 +69,21 @@ class SynchrenityEventDispatcher
     public function dispatch($event, $payload = [], $context = [])
     {
         // Rate limiting & replay protection
-        if ($this->isRateLimited($event, $context)) return false;
+        if ($this->isRateLimited($event, $context)) {
+            return false;
+        }
+
         // Middleware validation/filtering
         foreach ($this->middleware as $mw) {
-            if ($mw($event, $payload, $context) === false) return false;
+            if ($mw($event, $payload, $context) === false) {
+                return false;
+            }
         }
         // Audit log
         $this->audit($event, $payload, $context);
         // Hooks: before
         $this->runHooks('before', $event, $payload, $context);
+
         // Dispatch listeners
         if (isset($this->listeners[$event])) {
             foreach (array_filter($this->listeners[$event], 'is_callable') as $listener) {
@@ -80,6 +96,7 @@ class SynchrenityEventDispatcher
         }
         // Hooks: after
         $this->runHooks('after', $event, $payload, $context);
+
         return true;
     }
 
@@ -89,10 +106,10 @@ class SynchrenityEventDispatcher
     protected function audit($event, $payload, $context)
     {
         $this->auditLog[] = [
-            'event' => $event,
-            'payload' => $payload,
-            'context' => $context,
-            'timestamp' => time()
+            'event'     => $event,
+            'payload'   => $payload,
+            'context'   => $context,
+            'timestamp' => time(),
         ];
     }
 
@@ -113,11 +130,13 @@ class SynchrenityEventDispatcher
     protected function matchEvents($event)
     {
         $matches = [];
+
         foreach (array_keys($this->listeners) as $registered) {
             if ($registered === $event || fnmatch($registered, $event)) {
                 $matches[] = $registered;
             }
         }
+
         return $matches;
     }
 
@@ -126,17 +145,25 @@ class SynchrenityEventDispatcher
      */
     public function onPriority($event, callable $listener, $priority = 10, $options = [])
     {
-        if (!isset($this->listeners[$event])) $this->listeners[$event] = [];
+        if (!isset($this->listeners[$event])) {
+            $this->listeners[$event] = [];
+        }
         $this->listeners[$event][] = ['listener' => $listener, 'priority' => $priority, 'options' => $options];
-        usort($this->listeners[$event], function($a, $b) { return $a['priority'] <=> $b['priority']; });
+        usort($this->listeners[$event], function ($a, $b) { return $a['priority'] <=> $b['priority']; });
     }
 
     /**
      * Event bubbling/propagation control
      */
     // removed duplicate declaration
-    public function stopPropagation() { $this->propagationStopped = true; }
-    public function resetPropagation() { $this->propagationStopped = false; }
+    public function stopPropagation()
+    {
+        $this->propagationStopped = true;
+    }
+    public function resetPropagation()
+    {
+        $this->propagationStopped = false;
+    }
 
     /**
      * Transactional events (rollback on error)
@@ -144,13 +171,16 @@ class SynchrenityEventDispatcher
     public function dispatchTransactional($event, $payload = [], $context = [])
     {
         $this->audit($event, $payload, $context);
+
         try {
             $this->dispatch($event, $payload, $context);
         } catch (\Throwable $e) {
             // Rollback logic stub
             $this->runHooks('rollback', $event, $payload, $context, $e);
+
             return false;
         }
+
         return true;
     }
 
@@ -161,10 +191,10 @@ class SynchrenityEventDispatcher
     public function persistEvent($event, $payload, $context)
     {
         $entry = [
-            'event' => $event,
-            'payload' => $payload,
-            'context' => $context,
-            'timestamp' => time()
+            'event'     => $event,
+            'payload'   => $payload,
+            'context'   => $context,
+            'timestamp' => time(),
         ];
         $file = __DIR__ . '/event_store.jsonl';
         file_put_contents($file, json_encode($entry) . "\n", FILE_APPEND | LOCK_EX);
@@ -175,7 +205,10 @@ class SynchrenityEventDispatcher
      */
     public function enableGroup($group)
     {
-        if (!isset($this->listenerGroups[$group])) return;
+        if (!isset($this->listenerGroups[$group])) {
+            return;
+        }
+
         foreach ($this->listenerGroups[$group] as [$event, $listener]) {
             $this->on($event, $listener);
         }
@@ -186,7 +219,10 @@ class SynchrenityEventDispatcher
      */
     public function disableGroup($group)
     {
-        if (!isset($this->listenerGroups[$group])) return;
+        if (!isset($this->listenerGroups[$group])) {
+            return;
+        }
+
         foreach ($this->listenerGroups[$group] as [$event, $listener]) {
             if (($key = array_search($listener, $this->listeners[$event] ?? [], true)) !== false) {
                 unset($this->listeners[$event][$key]);
@@ -204,8 +240,9 @@ class SynchrenityEventDispatcher
             foreach ($specs as $spec) {
                 if (is_array($spec) && count($spec) === 2) {
                     [$class, $method] = $spec;
+
                     if (class_exists($class) && method_exists($class, $method)) {
-                        $this->on($event, [new $class, $method]);
+                        $this->on($event, [new $class(), $method]);
                     }
                 } elseif (is_callable($spec)) {
                     $this->on($event, $spec);
@@ -230,7 +267,9 @@ class SynchrenityEventDispatcher
      */
     public function addIntegrationHook($type, callable $hook)
     {
-        if (!isset($this->hooks[$type])) $this->hooks[$type] = [];
+        if (!isset($this->hooks[$type])) {
+            $this->hooks[$type] = [];
+        }
         $this->hooks[$type][] = $hook;
     }
 
@@ -262,8 +301,14 @@ class SynchrenityEventDispatcher
      * Event tracing/correlation IDs
      * Generates/returns a trace ID for event correlation
      */
-    public function enableTracing() { $this->tracingEnabled = true; }
-    public function disableTracing() { $this->tracingEnabled = false; }
+    public function enableTracing()
+    {
+        $this->tracingEnabled = true;
+    }
+    public function disableTracing()
+    {
+        $this->tracingEnabled = false;
+    }
     protected function getTraceId($context)
     {
         return $context['trace_id'] ?? bin2hex(random_bytes(8));
@@ -275,7 +320,9 @@ class SynchrenityEventDispatcher
      */
     protected function recordMetric($event, $type, $value)
     {
-        if (!isset($this->metrics[$event])) $this->metrics[$event] = [];
+        if (!isset($this->metrics[$event])) {
+            $this->metrics[$event] = [];
+        }
         $this->metrics[$event][$type][] = $value;
     }
     public function getMetrics($event = null)
@@ -304,9 +351,15 @@ class SynchrenityEventDispatcher
     {
         // Example: $auth = ['role' => 'admin', 'user_id' => 123]
         // Replace with real user/context integration
-        if (empty($auth)) return false;
+        if (empty($auth)) {
+            return false;
+        }
+
         // Example: Only allow 'admin' role
-        if (isset($auth['role']) && $auth['role'] === 'admin') return true;
+        if (isset($auth['role']) && $auth['role'] === 'admin') {
+            return true;
+        }
+
         // Add more robust checks as needed
         return false;
     }
@@ -317,17 +370,24 @@ class SynchrenityEventDispatcher
      */
     protected function isRateLimited($event, $context)
     {
-        $key = md5($event . json_encode($context));
-        $now = time();
+        $key    = md5($event . json_encode($context));
+        $now    = time();
         $window = 60; // seconds
-        $limit = 20; // max events per window
-        if (!isset($this->rateLimits[$key])) $this->rateLimits[$key] = [];
+        $limit  = 20; // max events per window
+
+        if (!isset($this->rateLimits[$key])) {
+            $this->rateLimits[$key] = [];
+        }
         // Remove timestamps outside window
-        $this->rateLimits[$key] = array_filter($this->rateLimits[$key], function($ts) use ($now, $window) {
+        $this->rateLimits[$key] = array_filter($this->rateLimits[$key], function ($ts) use ($now, $window) {
             return $ts > $now - $window;
         });
-        if (count($this->rateLimits[$key]) >= $limit) return true;
+
+        if (count($this->rateLimits[$key]) >= $limit) {
+            return true;
+        }
         $this->rateLimits[$key][] = $now;
+
         return false;
     }
 }

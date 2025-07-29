@@ -1,5 +1,8 @@
 <?php
+
+declare(strict_types=1);
 // lib/SynchrenityCore.php
+
 namespace Synchrenity;
 
 /**
@@ -11,39 +14,71 @@ class SynchrenityCore
 {
     // --- ADVANCED: Middleware pipeline ---
     protected $middleware = [];
-    public function addMiddleware($mw) { $this->middleware[] = $mw; }
-    public function runMiddleware($request, $final = null) {
+    public function addMiddleware($mw)
+    {
+        $this->middleware[] = $mw;
+    }
+    public function runMiddleware($request, $final = null)
+    {
         $stack = $this->middleware;
-        $core = $this;
+        $core  = $this;
         $index = 0;
-        $next = function($req) use (&$stack, &$index, $final, $core, &$next) {
-            if (!isset($stack[$index])) return $final ? $final($req) : $req;
+        $next  = function ($req) use (&$stack, &$index, $final, $core, &$next) {
+            if (!isset($stack[$index])) {
+                return $final ? $final($req) : $req;
+            }
             $mw = $stack[$index++];
+
             return $mw->handle($req, $next);
         };
+
         return $next($request);
     }
 
     // --- ADVANCED: Health/readiness/liveness checks ---
-    public function health() { return ['status'=>'ok','uptime'=>time()-($_SERVER['REQUEST_TIME']??time())]; }
-    public function readiness() { return ['ready'=>true]; }
-    public function liveness() { return ['alive'=>true]; }
+    public function health()
+    {
+        return ['status' => 'ok','uptime' => time() - ($_SERVER['REQUEST_TIME'] ?? time())];
+    }
+    public function readiness()
+    {
+        return ['ready' => true];
+    }
+    public function liveness()
+    {
+        return ['alive' => true];
+    }
 
     // --- ADVANCED: Hot reload/config reload ---
-    public function reloadConfig(array $config = []) {
-        if (!empty($config)) $this->config = $config;
-        else if (file_exists('config/config.php')) $this->config = include 'config/config.php';
+    public function reloadConfig(array $config = [])
+    {
+        if (!empty($config)) {
+            $this->config = $config;
+        } elseif (file_exists('config/config.php')) {
+            $this->config = include 'config/config.php';
+        }
     }
-    public function reloadEnv(array $env = []) {
-        if (!empty($env)) $this->env = $env;
-        else if (file_exists('.env')) $this->env = parse_ini_file('.env');
+    public function reloadEnv(array $env = [])
+    {
+        if (!empty($env)) {
+            $this->env = $env;
+        } elseif (file_exists('.env')) {
+            $this->env = parse_ini_file('.env');
+        }
     }
 
     // --- ADVANCED: Dependency Injection Container ---
     protected $container = [];
-    public function bind($name, $resolver) { $this->container[$name] = $resolver; }
-    public function make($name, ...$args) {
-        if (!isset($this->container[$name])) throw new \RuntimeException("Service $name not bound");
+    public function bind($name, $resolver)
+    {
+        $this->container[$name] = $resolver;
+    }
+    public function make($name, ...$args)
+    {
+        if (!isset($this->container[$name])) {
+            throw new \RuntimeException("Service $name not bound");
+        }
+
         return call_user_func_array($this->container[$name], $args);
     }
 
@@ -52,121 +87,191 @@ class SynchrenityCore
      * Modern logging: SynchrenityLogger instance (file, stdout, JSON, rotation, context, channels)
      */
     public $logger;
-    public function setLogger($logger) { $this->logger = $logger; }
-    public function log($level, $msg, $context = []) {
-        if ($this->logger) return $this->logger->log($level, $msg, $context);
+    public function setLogger($logger)
+    {
+        $this->logger = $logger;
+    }
+    public function log($level, $msg, $context = [])
+    {
+        if ($this->logger) {
+            return $this->logger->log($level, $msg, $context);
+        }
         error_log("[$level] $msg " . json_encode($context));
     }
 
     // --- ADVANCED: Metrics/observability ---
     protected $metrics = [];
-    public function recordMetric($name, $value, $tags = []) {
-        $this->metrics[] = ['name'=>$name,'value'=>$value,'tags'=>$tags,'time'=>time()];
+    public function recordMetric($name, $value, $tags = [])
+    {
+        $this->metrics[] = ['name' => $name,'value' => $value,'tags' => $tags,'time' => time()];
     }
-    public function getMetrics() { return $this->metrics; }
+    public function getMetrics()
+    {
+        return $this->metrics;
+    }
 
     // --- ADVANCED: Graceful shutdown (signal handling) ---
     protected $shutdownHandlers = [];
-    public function onShutdown(callable $cb) { $this->shutdownHandlers[] = $cb; }
-    public function handleSignals() {
+    public function onShutdown(callable $cb)
+    {
+        $this->shutdownHandlers[] = $cb;
+    }
+    public function handleSignals()
+    {
         if (function_exists('pcntl_signal')) {
             pcntl_signal(SIGTERM, [$this, 'shutdown']);
             pcntl_signal(SIGINT, [$this, 'shutdown']);
         }
     }
-    public function shutdown() {
+    public function shutdown()
+    {
         $this->runLifecycleHook('shutdown');
-        foreach ($this->shutdownHandlers as $cb) $cb($this);
+
+        foreach ($this->shutdownHandlers as $cb) {
+            $cb($this);
+        }
     }
 
     // --- ADVANCED: Secrets management ---
     protected $secrets = [];
-    public function loadSecrets($source = null) {
-        if ($source && is_array($source)) $this->secrets = $source;
-        else if (file_exists('secrets.php')) $this->secrets = include 'secrets.php';
-        else if (file_exists('.secrets.env')) $this->secrets = parse_ini_file('.secrets.env');
+    public function loadSecrets($source = null)
+    {
+        if ($source && is_array($source)) {
+            $this->secrets = $source;
+        } elseif (file_exists('secrets.php')) {
+            $this->secrets = include 'secrets.php';
+        } elseif (file_exists('.secrets.env')) {
+            $this->secrets = parse_ini_file('.secrets.env');
+        }
     }
-    public function secret($key, $default = null) { return $this->secrets[$key] ?? $default; }
+    public function secret($key, $default = null)
+    {
+        return $this->secrets[$key] ?? $default;
+    }
 
     // --- ADVANCED: Async event bus ---
     protected $eventQueue = [];
-    public function queueEvent($event, ...$args) { $this->eventQueue[] = [$event, $args]; }
-    public function processEventQueue() {
-        while ($evt = array_shift($this->eventQueue)) $this->dispatch($evt[0], ...$evt[1]);
+    public function queueEvent($event, ...$args)
+    {
+        $this->eventQueue[] = [$event, $args];
+    }
+    public function processEventQueue()
+    {
+        while ($evt = array_shift($this->eventQueue)) {
+            $this->dispatch($evt[0], ...$evt[1]);
+        }
     }
 
     // --- ADVANCED: Plugin/extension loader ---
-    public function loadPlugin($file) {
+    public function loadPlugin($file)
+    {
         if (file_exists($file)) {
             $plugin = include $file;
-            if (is_object($plugin) && method_exists($plugin, 'register')) $plugin->register($this);
+
+            if (is_object($plugin) && method_exists($plugin, 'register')) {
+                $plugin->register($this);
+            }
         }
     }
-    public function unloadPlugin($name) {
+    public function unloadPlugin($name)
+    {
         unset($this->modules[$name]);
         unset($this->$name);
     }
 
     // --- ADVANCED: Security hardening ---
-    public function validateRequest($request) {
+    public function validateRequest($request)
+    {
         // Example: check for required fields, input types, etc.
         return is_array($request) && isset($request['headers']) && isset($request['body']);
     }
-    public function sanitize($data) {
-        if (is_array($data)) foreach ($data as $k=>$v) $data[$k] = $this->sanitize($v);
+    public function sanitize($data)
+    {
+        if (is_array($data)) {
+            foreach ($data as $k => $v) {
+                $data[$k] = $this->sanitize($v);
+            }
+        }
+
         return is_string($data) ? htmlspecialchars($data, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8') : $data;
     }
 
     // --- ADVANCED: Multi-tenancy ---
     protected $tenantContext = null;
-    public function setTenantContext($tenant) { $this->tenantContext = $tenant; }
-    public function getTenantContext() { return $this->tenantContext; }
+    public function setTenantContext($tenant)
+    {
+        $this->tenantContext = $tenant;
+    }
+    public function getTenantContext()
+    {
+        return $this->tenantContext;
+    }
 
     // --- ADVANCED: Distributed locking/coordination ---
     protected $locks = [];
-    public function acquireLock($name) {
-        if (!isset($this->locks[$name])) { $this->locks[$name] = true; return true; }
+    public function acquireLock($name)
+    {
+        if (!isset($this->locks[$name])) {
+            $this->locks[$name] = true;
+
+            return true;
+        }
+
         return false;
     }
-    public function releaseLock($name) { unset($this->locks[$name]); }
+    public function releaseLock($name)
+    {
+        unset($this->locks[$name]);
+    }
 
     // --- ADVANCED: API versioning ---
     protected $apiVersion = 'v1';
-    public function setApiVersion($ver) { $this->apiVersion = $ver; }
-    public function getApiVersion() { return $this->apiVersion; }
+    public function setApiVersion($ver)
+    {
+        $this->apiVersion = $ver;
+    }
+    public function getApiVersion()
+    {
+        return $this->apiVersion;
+    }
 
     // --- ADVANCED: Self-diagnostics ---
-    public function diagnostics() {
+    public function diagnostics()
+    {
         return [
             'framework' => self::$frameworkName,
-            'version' => $this->getApiVersion(),
-            'modules' => array_keys($this->modules),
-            'metrics' => $this->getMetrics(),
-            'uptime' => time()-($_SERVER['REQUEST_TIME']??time()),
-            'env' => $this->env,
-            'config' => $this->config,
+            'version'   => $this->getApiVersion(),
+            'modules'   => array_keys($this->modules),
+            'metrics'   => $this->getMetrics(),
+            'uptime'    => time() - ($_SERVER['REQUEST_TIME'] ?? time()),
+            'env'       => $this->env,
+            'config'    => $this->config,
         ];
     }
     /**
      * Stores application configuration
+     *
      * @var array
      */
     protected $config;
 
     /**
      * Stores loaded environment variables
+     *
      * @var array
      */
     protected $env;
 
     /**
      * Registered service providers
+     *
      * @var array
      */
     protected $providers = [];
 
     /**
      * Registered event listeners
+     *
      * @var array
      */
     protected $events = [];
@@ -203,14 +308,16 @@ class SynchrenityCore
     public $i18n;
     public $websocket;
     public $validator;
-    protected $modules = [];
+    protected $modules        = [];
     protected $lifecycleHooks = [ 'boot' => [], 'shutdown' => [] ];
 
     /**
      * Register a module dynamically
      */
-    public function registerModule($name, $instance) {
+    public function registerModule($name, $instance)
+    {
         $this->modules[$name] = $instance;
+
         if (method_exists($instance, 'setAuditTrail')) {
             $instance->setAuditTrail($this->auditTrail);
         }
@@ -220,14 +327,16 @@ class SynchrenityCore
     /**
      * Get a registered module
      */
-    public function getModule($name) {
+    public function getModule($name)
+    {
         return $this->modules[$name] ?? null;
     }
 
     /**
      * Register a lifecycle hook (boot, shutdown)
      */
-    public function onLifecycle($event, callable $hook) {
+    public function onLifecycle($event, callable $hook)
+    {
         if (isset($this->lifecycleHooks[$event])) {
             $this->lifecycleHooks[$event][] = $hook;
         }
@@ -236,7 +345,8 @@ class SynchrenityCore
     /**
      * Run lifecycle hooks
      */
-    protected function runLifecycleHook($event) {
+    protected function runLifecycleHook($event)
+    {
         if (!empty($this->lifecycleHooks[$event])) {
             foreach ($this->lifecycleHooks[$event] as $hook) {
                 call_user_func($hook, $this);
@@ -253,16 +363,17 @@ class SynchrenityCore
     public function __construct(array $config = [], array $env = [])
     {
         $this->config = $config;
-        $this->env = $env;
+        $this->env    = $env;
+
         // --- Logging: auto-initialize logger ---
         if (class_exists('Synchrenity\Logging\SynchrenityLogger')) {
-            $logDir = $config['log_dir'] ?? __DIR__ . '/../storage/logs';
+            $logDir       = $config['log_dir'] ?? __DIR__ . '/../storage/logs';
             $this->logger = new \Synchrenity\Logging\SynchrenityLogger([
                 'log_dir' => $logDir,
                 'channel' => 'app',
-                'level' => $env['LOG_LEVEL'] ?? 'debug',
-                'json' => $env['LOG_JSON'] ?? true,
-                'stdout' => $env['LOG_STDOUT'] ?? false
+                'level'   => $env['LOG_LEVEL']  ?? 'debug',
+                'json'    => $env['LOG_JSON']   ?? true,
+                'stdout'  => $env['LOG_STDOUT'] ?? false,
             ]);
             $this->log('info', 'SynchrenityCore initialized');
         }
@@ -271,27 +382,30 @@ class SynchrenityCore
 
         // Automated audit injection for all major modules
         $modules = [
-            'auth' => ['\Synchrenity\Auth\SynchrenityAuth'],
-            'queue' => ['\Synchrenity\Queue\SynchrenityJobQueue'],
-            'notifier' => ['\Synchrenity\Notification\SynchrenityNotifier'],
-            'media' => ['\Synchrenity\Media\SynchrenityMediaManager'],
-            'cache' => ['\Synchrenity\Cache\SynchrenityCacheManager'],
-            'rateLimiter' => ['\Synchrenity\RateLimit\SynchrenityRateLimiter'],
-            'tenant' => ['\Synchrenity\Tenant\SynchrenityTenantManager'],
-            'plugin' => ['\Synchrenity\Plugin\SynchrenityPluginManager'],
-            'i18n' => ['\Synchrenity\I18n\SynchrenityI18nManager'],
-            'websocket' => ['\Synchrenity\WebSocket\SynchrenityWebSocketServer'],
-            'validator' => ['\Synchrenity\Validation\SynchrenityValidator'],
+            'auth'           => ['\Synchrenity\Auth\SynchrenityAuth'],
+            'queue'          => ['\Synchrenity\Queue\SynchrenityJobQueue'],
+            'notifier'       => ['\Synchrenity\Notification\SynchrenityNotifier'],
+            'media'          => ['\Synchrenity\Media\SynchrenityMediaManager'],
+            'cache'          => ['\Synchrenity\Cache\SynchrenityCacheManager'],
+            'rateLimiter'    => ['\Synchrenity\RateLimit\SynchrenityRateLimiter'],
+            'tenant'         => ['\Synchrenity\Tenant\SynchrenityTenantManager'],
+            'plugin'         => ['\Synchrenity\Plugin\SynchrenityPluginManager'],
+            'i18n'           => ['\Synchrenity\I18n\SynchrenityI18nManager'],
+            'websocket'      => ['\Synchrenity\WebSocket\SynchrenityWebSocketServer'],
+            'validator'      => ['\Synchrenity\Validation\SynchrenityValidator'],
             'apiRateLimiter' => ['\Synchrenity\API\SynchrenityApiRateLimiter'],
-            'oauth2Provider' => ['\Synchrenity\Auth\SynchrenityOAuth2Provider']
+            'oauth2Provider' => ['\Synchrenity\Auth\SynchrenityOAuth2Provider'],
         ];
+
         foreach ($modules as $prop => $classes) {
             foreach ($classes as $class) {
                 if (class_exists($class)) {
                     $this->$prop = new $class();
+
                     if (method_exists($this->$prop, 'setAuditTrail')) {
                         $this->$prop->setAuditTrail($this->auditTrail);
                     }
+
                     // --- Logging: inject logger into modules if supported ---
                     if (property_exists($this->$prop, 'logger')) {
                         $this->$prop->logger = $this->logger;
@@ -328,7 +442,8 @@ class SynchrenityCore
     public function config($key, $default = null)
     {
         $segments = explode('.', $key);
-        $value = $this->config;
+        $value    = $this->config;
+
         foreach ($segments as $segment) {
             if (is_array($value) && array_key_exists($segment, $value)) {
                 $value = $value[$segment];
@@ -336,6 +451,7 @@ class SynchrenityCore
                 return $default;
             }
         }
+
         return $value;
     }
 
@@ -353,6 +469,7 @@ class SynchrenityCore
     public function registerProvider($provider)
     {
         $this->providers[] = $provider;
+
         if (method_exists($provider, 'register')) {
             $provider->register($this);
         }
@@ -393,12 +510,13 @@ class SynchrenityCore
      */
     protected function setupErrorHandling()
     {
-        $this->setErrorHandler(function($e) {
+        $this->setErrorHandler(function ($e) {
             $msg = $e instanceof \Throwable ? $e->getMessage() : $e;
+
             if ($this->logger) {
                 $this->logger->error($msg, ['exception' => $e]);
             }
-            echo "[Synchrenity Error] " . $msg . "\n";
+            echo '[Synchrenity Error] ' . $msg . "\n";
         });
     }
 
@@ -409,21 +527,24 @@ class SynchrenityCore
     {
         $this->log('info', 'Request received', [
             'method' => $_SERVER['REQUEST_METHOD'] ?? null,
-            'uri' => $_SERVER['REQUEST_URI'] ?? null,
-            'ip' => $_SERVER['REMOTE_ADDR'] ?? null
+            'uri'    => $_SERVER['REQUEST_URI']    ?? null,
+            'ip'     => $_SERVER['REMOTE_ADDR']    ?? null,
         ]);
         // --- Event: request.received ---
         $this->dispatch('request.received');
 
         // --- Rate Limiting ---
         $rateLimiter = $this->rateLimiter;
+
         if ($rateLimiter) {
             $rateLimiter->setLimit('ip:' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'), 100, 60); // 100 req/min per IP
+
             if (!$rateLimiter->check('ip:' . ($_SERVER['REMOTE_ADDR'] ?? 'unknown'))) {
                 $this->log('warning', 'Rate limit exceeded', ['ip' => $_SERVER['REMOTE_ADDR'] ?? null]);
                 $this->dispatch('rate.limit.exceeded');
                 $response = new \Synchrenity\Http\SynchrenityResponse('Rate limit exceeded', 429);
                 $response->send();
+
                 return;
             }
         }
@@ -434,10 +555,10 @@ class SynchrenityCore
         // --- Routing (stub) ---
         $router = new \Synchrenity\Http\SynchrenityRouter();
         // Example route registration (should be done in bootstrap)
-        $router->add('GET', '/', function($req) {
+        $router->add('GET', '/', function ($req) {
             return new \Synchrenity\Http\SynchrenityResponse('Welcome to ' . \Synchrenity\SynchrenityCore::getFrameworkName() . '!');
         });
-        $request = new \Synchrenity\Http\SynchrenityRequest();
+        $request  = new \Synchrenity\Http\SynchrenityRequest();
         $response = $router->dispatch($request);
 
         // --- Event: after routing ---
@@ -447,7 +568,7 @@ class SynchrenityCore
         $response->send();
         $this->log('info', 'Response sent', [
             'status' => $response->getStatusCode() ?? 200,
-            'uri' => $_SERVER['REQUEST_URI'] ?? null
+            'uri'    => $_SERVER['REQUEST_URI']    ?? null,
         ]);
 
         // --- Event: response.sent ---
@@ -471,6 +592,7 @@ class SynchrenityCore
             return $this->cliKernel->handle($args);
         }
         echo "CLI kernel not initialized.\n";
+
         return 1;
     }
 
@@ -482,6 +604,7 @@ class SynchrenityCore
         if ($secure) {
             if (strncasecmp(PHP_OS, 'WIN', 3) === 0) {
                 echo $prompt;
+
                 return trim(fgets(STDIN));
             } else {
                 echo $prompt;
@@ -489,10 +612,12 @@ class SynchrenityCore
                 $input = trim(fgets(STDIN));
                 system('stty echo');
                 echo "\n";
+
                 return $input;
             }
         } else {
             echo $prompt;
+
             return trim(fgets(STDIN));
         }
     }

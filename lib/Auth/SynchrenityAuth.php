@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Synchrenity\Auth;
 
 /**
@@ -8,31 +11,33 @@ namespace Synchrenity\Auth;
 class SynchrenityAuth
 {
     protected $impersonatorId = null;
-    protected $apiKeys = [];
-    protected $rateLimits = [];
+    protected $apiKeys        = [];
+    protected $rateLimits     = [];
     protected $userModel;
     protected $session;
-    protected $errors = [];
-    protected $events = [];
+    protected $errors  = [];
+    protected $events  = [];
     protected $plugins = [];
     protected $metrics = [
-        'logins' => 0,
-        'mfa' => 0,
-        'passwordless' => 0,
+        'logins'         => 0,
+        'mfa'            => 0,
+        'passwordless'   => 0,
         'impersonations' => 0,
-        'api_keys' => 0,
-        'rate_limited' => 0,
-        'errors' => 0
+        'api_keys'       => 0,
+        'rate_limited'   => 0,
+        'errors'         => 0,
     ];
     protected $context = [];
     // Audit trail instance (should be injected or set from SynchrenityCore)
     protected $auditTrail;
 
-    public function setAuditTrail($auditTrail) {
+    public function setAuditTrail($auditTrail)
+    {
         $this->auditTrail = $auditTrail;
     }
 
-    protected function audit($action, $userId, $meta = []) {
+    protected function audit($action, $userId, $meta = [])
+    {
         if ($this->auditTrail) {
             $this->auditTrail->log($action, [], $userId, $meta);
         }
@@ -44,24 +49,37 @@ class SynchrenityAuth
     {
         $this->metrics['mfa']++;
         $user = $this->userModel->find($userId);
-        if (!$user || empty($user->mfa_secret)) return false;
-        $window = 1; // Acceptable time window
+
+        if (!$user || empty($user->mfa_secret)) {
+            return false;
+        }
+        $window    = 1; // Acceptable time window
         $timestamp = floor(time() / 30);
+
         for ($i = -$window; $i <= $window; $i++) {
             $hash = hash_hmac('sha1', ($timestamp + $i) . $user->mfa_secret, $this->encryptionKey ?? 'default_key');
             $totp = substr(hash('sha256', $hash), 0, 6);
+
             if ($totp === $code) {
                 $this->trigger('mfa_success', $userId);
+
                 foreach ($this->plugins as $plugin) {
-                    if (is_callable([$plugin, 'onMfaSuccess'])) $plugin->onMfaSuccess($userId, $this);
+                    if (is_callable([$plugin, 'onMfaSuccess'])) {
+                        $plugin->onMfaSuccess($userId, $this);
+                    }
                 }
+
                 return true;
             }
         }
         $this->trigger('mfa_fail', $userId);
+
         foreach ($this->plugins as $plugin) {
-            if (is_callable([$plugin, 'onMfaFail'])) $plugin->onMfaFail($userId, $this);
+            if (is_callable([$plugin, 'onMfaFail'])) {
+                $plugin->onMfaFail($userId, $this);
+            }
         }
+
         return false;
     }
 
@@ -74,19 +92,24 @@ class SynchrenityAuth
             $this->errors['social'] = 'Provider not supported.';
             $this->metrics['errors']++;
             $this->trigger('social_error', $provider);
+
             foreach ($this->plugins as $plugin) {
-                if (is_callable([$plugin, 'onSocialError'])) $plugin->onSocialError($provider, $this);
+                if (is_callable([$plugin, 'onSocialError'])) {
+                    $plugin->onSocialError($provider, $this);
+                }
             }
+
             return false;
         }
         $accessToken = 'stub_token';
-        $userInfo = ['id' => 'stub_id', 'email' => 'stub@example.com'];
-        $user = $this->userModel->findBySocialId($provider, $userInfo['id']);
+        $userInfo    = ['id' => 'stub_id', 'email' => 'stub@example.com'];
+        $user        = $this->userModel->findBySocialId($provider, $userInfo['id']);
+
         if (!$user) {
             $userId = $this->userModel->create([
-                'email' => $userInfo['email'],
+                'email'     => $userInfo['email'],
                 'social_id' => $userInfo['id'],
-                'provider' => $provider
+                'provider'  => $provider,
             ]);
             $this->session->set('user_id', $userId);
             $this->audit('social_register', $userId);
@@ -97,20 +120,39 @@ class SynchrenityAuth
             $this->metrics['logins']++;
         }
         $this->trigger('social_login', $provider);
+
         foreach ($this->plugins as $plugin) {
-            if (is_callable([$plugin, 'onSocialLogin'])) $plugin->onSocialLogin($provider, $this);
+            if (is_callable([$plugin, 'onSocialLogin'])) {
+                $plugin->onSocialLogin($provider, $this);
+            }
         }
+
         return true;
     }
     // Plugin system
-    public function registerPlugin($plugin) { $this->plugins[] = $plugin; }
+    public function registerPlugin($plugin)
+    {
+        $this->plugins[] = $plugin;
+    }
     // Metrics
-    public function getMetrics() { return $this->metrics; }
+    public function getMetrics()
+    {
+        return $this->metrics;
+    }
     // Context
-    public function setContext($key, $value) { $this->context[$key] = $value; }
-    public function getContext($key, $default = null) { return $this->context[$key] ?? $default; }
+    public function setContext($key, $value)
+    {
+        $this->context[$key] = $value;
+    }
+    public function getContext($key, $default = null)
+    {
+        return $this->context[$key] ?? $default;
+    }
     // Introspection
-    public function getPlugins() { return $this->plugins; }
+    public function getPlugins()
+    {
+        return $this->plugins;
+    }
 
     /**
      * JWT signature verification (stub)
@@ -118,12 +160,19 @@ class SynchrenityAuth
     protected function verifyJwt($jwt)
     {
         $parts = explode('.', $jwt);
-        if (count($parts) !== 3) return false;
-        $header = json_decode(base64_decode($parts[0]), true);
-        $payload = json_decode(base64_decode($parts[1]), true);
+
+        if (count($parts) !== 3) {
+            return false;
+        }
+        $header    = json_decode(base64_decode($parts[0]), true);
+        $payload   = json_decode(base64_decode($parts[1]), true);
         $signature = $parts[2];
+
         // In production, use openssl_verify or sodium_crypto
-        if (empty($payload['sub']) || (isset($payload['exp']) && $payload['exp'] < time())) return false;
+        if (empty($payload['sub']) || (isset($payload['exp']) && $payload['exp'] < time())) {
+            return false;
+        }
+
         // Stub: skip signature check
         return $payload;
     }
@@ -142,7 +191,10 @@ class SynchrenityAuth
      */
     public function on($event, callable $handler)
     {
-        if (!isset($this->events[$event])) $this->events[$event] = [];
+        if (!isset($this->events[$event])) {
+            $this->events[$event] = [];
+        }
+
         if (is_callable($handler)) {
             $this->events[$event][] = $handler;
         }
@@ -171,6 +223,7 @@ class SynchrenityAuth
         $this->userModel->removeDevice($userId, $deviceId);
         $this->audit('revoke_device', $userId);
         $this->trigger('revoke_device', $deviceId);
+
         return true;
     }
 
@@ -212,19 +265,24 @@ class SynchrenityAuth
      */
     public function isRateLimited($action, $userId)
     {
-        $now = time();
-        $limit = 5; // Example: 5 actions per minute
+        $now    = time();
+        $limit  = 5; // Example: 5 actions per minute
         $window = 60;
+
         if (!isset($this->rateLimits[$action][$userId])) {
             $this->rateLimits[$action][$userId] = [];
         }
         // Remove old timestamps
         $this->rateLimits[$action][$userId] = array_filter(
             $this->rateLimits[$action][$userId],
-            function($ts) use ($now, $window) { return $ts > $now - $window; }
+            function ($ts) use ($now, $window) { return $ts > $now - $window; }
         );
-        if (count($this->rateLimits[$action][$userId]) >= $limit) return true;
+
+        if (count($this->rateLimits[$action][$userId]) >= $limit) {
+            return true;
+        }
         $this->rateLimits[$action][$userId][] = $now;
+
         return false;
     }
 

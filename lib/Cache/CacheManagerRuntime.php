@@ -1,7 +1,9 @@
 <?php
+
+declare(strict_types=1);
 // CacheManagerRuntime.php: Demonstration and runtime for SynchrenityCacheManager
-use Synchrenity\Cache\SynchrenityCacheManager;
 use Synchrenity\Audit\SynchrenityAuditTrail;
+use Synchrenity\Cache\SynchrenityCacheManager;
 
 require_once __DIR__ . '/../Audit/SynchrenityAuditTrail.php';
 require_once __DIR__ . '/SynchrenityCacheManager.php';
@@ -42,6 +44,7 @@ echo "File cache value for 'persist': " . $fileCache->get('persist') . "\n";
 // Show audit log entries
 $auditLogs = $audit->getLogs(10);
 echo "\nRecent audit logs:\n";
+
 foreach ($auditLogs as $log) {
     echo json_encode($log) . "\n";
 }

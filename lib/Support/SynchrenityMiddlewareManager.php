@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Synchrenity\Support;
 
 /**
@@ -7,10 +10,10 @@ namespace Synchrenity\Support;
  */
 class SynchrenityMiddlewareManager
 {
-    protected $global = [];
-    protected $route = [];
-    protected $event = [];
-    protected $priority = [];
+    protected $global        = [];
+    protected $route         = [];
+    protected $event         = [];
+    protected $priority      = [];
     protected $securityHooks = [];
 
     /**
@@ -19,7 +22,7 @@ class SynchrenityMiddlewareManager
     public function registerGlobal(callable $middleware, $priority = 10)
     {
         $this->global[] = ['middleware' => $middleware, 'priority' => $priority];
-        usort($this->global, fn($a, $b) => $a['priority'] <=> $b['priority']);
+        usort($this->global, fn ($a, $b) => $a['priority'] <=> $b['priority']);
     }
 
     /**
@@ -27,9 +30,11 @@ class SynchrenityMiddlewareManager
      */
     public function registerRoute($route, callable $middleware, $priority = 10)
     {
-        if (!isset($this->route[$route])) $this->route[$route] = [];
+        if (!isset($this->route[$route])) {
+            $this->route[$route] = [];
+        }
         $this->route[$route][] = ['middleware' => $middleware, 'priority' => $priority];
-        usort($this->route[$route], fn($a, $b) => $a['priority'] <=> $b['priority']);
+        usort($this->route[$route], fn ($a, $b) => $a['priority'] <=> $b['priority']);
     }
 
     /**
@@ -37,9 +42,11 @@ class SynchrenityMiddlewareManager
      */
     public function registerEvent($event, callable $middleware, $priority = 10)
     {
-        if (!isset($this->event[$event])) $this->event[$event] = [];
+        if (!isset($this->event[$event])) {
+            $this->event[$event] = [];
+        }
         $this->event[$event][] = ['middleware' => $middleware, 'priority' => $priority];
-        usort($this->event[$event], fn($a, $b) => $a['priority'] <=> $b['priority']);
+        usort($this->event[$event], fn ($a, $b) => $a['priority'] <=> $b['priority']);
     }
 
     /**
@@ -56,16 +63,28 @@ class SynchrenityMiddlewareManager
     public function handle($type, $key, $payload = [], $context = [])
     {
         $chain = [];
-        if ($type === 'global') $chain = $this->global;
-        elseif ($type === 'route' && isset($this->route[$key])) $chain = $this->route[$key];
-        elseif ($type === 'event' && isset($this->event[$key])) $chain = $this->event[$key];
+
+        if ($type === 'global') {
+            $chain = $this->global;
+        } elseif ($type === 'route' && isset($this->route[$key])) {
+            $chain = $this->route[$key];
+        } elseif ($type === 'event' && isset($this->event[$key])) {
+            $chain = $this->event[$key];
+        }
+
         // Security hooks always run first
         foreach ($this->securityHooks as $hook) {
-            if ($hook($payload, $context) === false) return false;
+            if ($hook($payload, $context) === false) {
+                return false;
+            }
         }
+
         foreach ($chain as $mw) {
-            if ($mw['middleware']($payload, $context) === false) return false;
+            if ($mw['middleware']($payload, $context) === false) {
+                return false;
+            }
         }
+
         return true;
     }
 
@@ -75,8 +94,11 @@ class SynchrenityMiddlewareManager
     public function remove($type, $key, callable $middleware)
     {
         $list = &$this->{$type}[$key];
+
         foreach ($list as $i => $mw) {
-            if ($mw['middleware'] === $middleware) unset($list[$i]);
+            if ($mw['middleware'] === $middleware) {
+                unset($list[$i]);
+            }
         }
     }
 
@@ -90,8 +112,9 @@ class SynchrenityMiddlewareManager
                 foreach ($specs as $spec) {
                     if (is_array($spec) && count($spec) === 2) {
                         [$class, $method] = $spec;
+
                         if (class_exists($class) && method_exists($class, $method)) {
-                            $this->register($type, $key, [new $class, $method]);
+                            $this->register($type, $key, [new $class(), $method]);
                         }
                     } elseif (is_callable($spec)) {
                         $this->register($type, $key, $spec);
@@ -106,9 +129,13 @@ class SynchrenityMiddlewareManager
      */
     protected function register($type, $key, callable $middleware)
     {
-        if ($type === 'global') $this->registerGlobal($middleware);
-        elseif ($type === 'route') $this->registerRoute($key, $middleware);
-        elseif ($type === 'event') $this->registerEvent($key, $middleware);
+        if ($type === 'global') {
+            $this->registerGlobal($middleware);
+        } elseif ($type === 'route') {
+            $this->registerRoute($key, $middleware);
+        } elseif ($type === 'event') {
+            $this->registerEvent($key, $middleware);
+        }
     }
 
     /**
@@ -117,21 +144,26 @@ class SynchrenityMiddlewareManager
      */
     public function attachToDispatcher($dispatcher)
     {
-        if (!method_exists($dispatcher, 'use')) return;
+        if (!method_exists($dispatcher, 'use')) {
+            return;
+        }
+
         // Attach all event middleware to dispatcher
         foreach ($this->event as $event => $middlewares) {
             foreach ($middlewares as $mw) {
-                $dispatcher->use(function($e, $payload, $context) use ($event, $mw) {
+                $dispatcher->use(function ($e, $payload, $context) use ($event, $mw) {
                     if ($e === $event) {
                         return $mw['middleware']($payload, $context);
                     }
+
                     return true;
                 });
             }
         }
+
         // Attach global middleware
         foreach ($this->global as $mw) {
-            $dispatcher->use(function($e, $payload, $context) use ($mw) {
+            $dispatcher->use(function ($e, $payload, $context) use ($mw) {
                 return $mw['middleware']($payload, $context);
             });
         }
@@ -142,23 +174,30 @@ class SynchrenityMiddlewareManager
      */
     public function registerAsync(callable $middleware, $type = 'global', $key = null, $priority = 10)
     {
-        $wrapper = function($payload, $context) use ($middleware) {
+        $wrapper = function ($payload, $context) use ($middleware) {
             // Run async (fire-and-forget)
             if (function_exists('pcntl_fork')) {
                 $pid = pcntl_fork();
+
                 if ($pid === 0) {
                     $middleware($payload, $context);
                     exit(0);
                 }
+
                 return true;
             } else {
                 // Fallback: run synchronously
                 return $middleware($payload, $context);
             }
         };
-        if ($type === 'global') $this->registerGlobal($wrapper, $priority);
-        elseif ($type === 'route' && $key) $this->registerRoute($key, $wrapper, $priority);
-        elseif ($type === 'event' && $key) $this->registerEvent($key, $wrapper, $priority);
+
+        if ($type === 'global') {
+            $this->registerGlobal($wrapper, $priority);
+        } elseif ($type === 'route' && $key) {
+            $this->registerRoute($key, $wrapper, $priority);
+        } elseif ($type === 'event' && $key) {
+            $this->registerEvent($key, $wrapper, $priority);
+        }
     }
 
     /**
@@ -167,25 +206,39 @@ class SynchrenityMiddlewareManager
     public function handleWithErrors($type, $key, $payload = [], $context = [], &$errors = [])
     {
         $chain = [];
-        if ($type === 'global') $chain = $this->global;
-        elseif ($type === 'route' && isset($this->route[$key])) $chain = $this->route[$key];
-        elseif ($type === 'event' && isset($this->event[$key])) $chain = $this->event[$key];
+
+        if ($type === 'global') {
+            $chain = $this->global;
+        } elseif ($type === 'route' && isset($this->route[$key])) {
+            $chain = $this->route[$key];
+        } elseif ($type === 'event' && isset($this->event[$key])) {
+            $chain = $this->event[$key];
+        }
+
         foreach ($this->securityHooks as $hook) {
             try {
-                if ($hook($payload, $context) === false) return false;
+                if ($hook($payload, $context) === false) {
+                    return false;
+                }
             } catch (\Throwable $e) {
                 $errors[] = $e->getMessage();
+
                 return false;
             }
         }
+
         foreach ($chain as $mw) {
             try {
-                if ($mw['middleware']($payload, $context) === false) return false;
+                if ($mw['middleware']($payload, $context) === false) {
+                    return false;
+                }
             } catch (\Throwable $e) {
                 $errors[] = $e->getMessage();
+
                 return false;
             }
         }
+
         return true;
     }
 
@@ -195,15 +248,23 @@ class SynchrenityMiddlewareManager
     public function handleIsolated($type, $key, $payload = [], $context = [])
     {
         $chain = [];
-        if ($type === 'global') $chain = $this->global;
-        elseif ($type === 'route' && isset($this->route[$key])) $chain = $this->route[$key];
-        elseif ($type === 'event' && isset($this->event[$key])) $chain = $this->event[$key];
+
+        if ($type === 'global') {
+            $chain = $this->global;
+        } elseif ($type === 'route' && isset($this->route[$key])) {
+            $chain = $this->route[$key];
+        } elseif ($type === 'event' && isset($this->event[$key])) {
+            $chain = $this->event[$key];
+        }
+
         foreach ($this->securityHooks as $hook) {
             $hook($payload, clone $context);
         }
+
         foreach ($chain as $mw) {
             $mw['middleware']($payload, clone $context);
         }
+
         return true;
     }
 
@@ -211,14 +272,26 @@ class SynchrenityMiddlewareManager
      * Before/after hooks for middleware chain
      */
     protected $beforeHooks = [];
-    protected $afterHooks = [];
-    public function registerBeforeHook(callable $hook) { $this->beforeHooks[] = $hook; }
-    public function registerAfterHook(callable $hook) { $this->afterHooks[] = $hook; }
+    protected $afterHooks  = [];
+    public function registerBeforeHook(callable $hook)
+    {
+        $this->beforeHooks[] = $hook;
+    }
+    public function registerAfterHook(callable $hook)
+    {
+        $this->afterHooks[] = $hook;
+    }
     public function handleWithHooks($type, $key, $payload = [], $context = [])
     {
-        foreach ($this->beforeHooks as $hook) $hook($payload, $context);
+        foreach ($this->beforeHooks as $hook) {
+            $hook($payload, $context);
+        }
         $result = $this->handle($type, $key, $payload, $context);
-        foreach ($this->afterHooks as $hook) $hook($payload, $context);
+
+        foreach ($this->afterHooks as $hook) {
+            $hook($payload, $context);
+        }
+
         return $result;
     }
 
@@ -227,14 +300,20 @@ class SynchrenityMiddlewareManager
      */
     public function registerConditional(callable $middleware, callable $condition, $type = 'global', $key = null, $priority = 10)
     {
-        $wrapper = function($payload, $context) use ($middleware, $condition) {
+        $wrapper = function ($payload, $context) use ($middleware, $condition) {
             if ($condition($payload, $context)) {
                 return $middleware($payload, $context);
             }
+
             return true;
         };
-        if ($type === 'global') $this->registerGlobal($wrapper, $priority);
-        elseif ($type === 'route' && $key) $this->registerRoute($key, $wrapper, $priority);
-        elseif ($type === 'event' && $key) $this->registerEvent($key, $wrapper, $priority);
+
+        if ($type === 'global') {
+            $this->registerGlobal($wrapper, $priority);
+        } elseif ($type === 'route' && $key) {
+            $this->registerRoute($key, $wrapper, $priority);
+        } elseif ($type === 'event' && $key) {
+            $this->registerEvent($key, $wrapper, $priority);
+        }
     }
 }

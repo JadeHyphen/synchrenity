@@ -1,14 +1,18 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Synchrenity\Commands;
 
 use Synchrenity\SynchrenityCommand;
 
 class SynchrenityMigrationStatusCommand extends SynchrenityCommand
 {
-    protected $name = 'migration:status';
+    protected $name        = 'migration:status';
     protected $description = 'Show migration status.';
 
-    public function __construct($kernel = null) {
+    public function __construct($kernel = null)
+    {
         parent::__construct($kernel);
     }
 
@@ -17,6 +21,7 @@ class SynchrenityMigrationStatusCommand extends SynchrenityCommand
         $this->info('Checking migration status...');
         // ...migration status logic...
         $this->info('Migration status displayed.');
+
         return 0;
     }
 }

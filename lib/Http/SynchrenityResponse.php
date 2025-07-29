@@ -1,4 +1,7 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Synchrenity\Http;
 
 /**
@@ -6,75 +9,90 @@ namespace Synchrenity\Http;
  */
 class SynchrenityResponse
 {
-    protected $status = 200;
+    protected $status  = 200;
     protected $headers = [];
-    protected $body = '';
-    protected $sent = false;
+    protected $body    = '';
+    protected $sent    = false;
     protected $plugins = [];
-    protected $events = [];
+    protected $events  = [];
     protected $metrics = [
-        'sent' => 0,
-        'json' => 0,
-        'file' => 0,
-        'stream' => 0,
-        'cookies' => 0
+        'sent'    => 0,
+        'json'    => 0,
+        'file'    => 0,
+        'stream'  => 0,
+        'cookies' => 0,
     ];
 
     public function __construct($body = '', $status = 200, array $headers = [])
     {
-        $this->body = $body;
-        $this->status = $status;
+        $this->body    = $body;
+        $this->status  = $status;
         $this->headers = $headers;
     }
 
     public function setHeader($name, $value)
     {
         $this->headers[$name] = $value;
+
         return $this;
     }
 
-    public function getHeader($name) {
+    public function getHeader($name)
+    {
         return $this->headers[$name] ?? null;
     }
 
     public function setStatus($status)
     {
         $this->status = $status;
+
         return $this;
     }
 
-    public function getStatus() {
+    public function getStatus()
+    {
         return $this->status;
     }
 
     public function setBody($body)
     {
         $this->body = $body;
+
         return $this;
     }
 
-    public function getBody() {
+    public function getBody()
+    {
         return $this->body;
     }
 
     public function send()
     {
-        if ($this->sent) return;
+        if ($this->sent) {
+            return;
+        }
         $this->sent = true;
         http_response_code($this->status);
+
         foreach ($this->headers as $name => $value) {
             header($name . ': ' . $value);
         }
+
         // Plugins before send
         foreach ($this->plugins as $plugin) {
-            if (is_callable([$plugin, 'beforeSend'])) $plugin->beforeSend($this);
+            if (is_callable([$plugin, 'beforeSend'])) {
+                $plugin->beforeSend($this);
+            }
         }
         $this->triggerEvent('beforeSend');
         echo $this->body;
         $this->metrics['sent']++;
+
         // Plugins after send
         foreach ($this->plugins as $plugin) {
-            if (is_callable([$plugin, 'afterSend'])) $plugin->afterSend($this);
+            if (is_callable([$plugin, 'afterSend'])) {
+                $plugin->afterSend($this);
+            }
         }
         $this->triggerEvent('afterSend');
     }
@@ -83,6 +101,7 @@ class SynchrenityResponse
     {
         $this->setHeader('Content-Type', 'application/json');
         $this->setStatus($status);
+
         foreach ($headers as $name => $value) {
             $this->setHeader($name, $value);
         }
@@ -96,6 +115,7 @@ class SynchrenityResponse
     {
         $this->setHeader('Content-Type', 'application/xml');
         $this->setStatus($status);
+
         foreach ($headers as $name => $value) {
             $this->setHeader($name, $value);
         }
@@ -105,10 +125,11 @@ class SynchrenityResponse
         $this->send();
     }
 
-    protected function arrayToXml($data, $root = 'response') {
+    protected function arrayToXml($data, $root = 'response')
+    {
         $xml = new \SimpleXMLElement("<{$root}/>");
-        $f = function($f, $data, $xml) {
-            foreach($data as $k => $v) {
+        $f   = function ($f, $data, $xml) {
+            foreach ($data as $k => $v) {
                 if (is_array($v)) {
                     $child = $xml->addChild(is_numeric($k) ? 'item' : $k);
                     $f($f, $v, $child);
@@ -118,6 +139,7 @@ class SynchrenityResponse
             }
         };
         $f($f, $data, $xml);
+
         return $xml->asXML();
     }
 
@@ -125,6 +147,7 @@ class SynchrenityResponse
     {
         if (!file_exists($filePath)) {
             $this->setStatus(404)->setBody('File not found')->send();
+
             return;
         }
         $this->setHeader('Content-Type', mime_content_type($filePath));
@@ -140,20 +163,24 @@ class SynchrenityResponse
     {
         $this->metrics['stream']++;
         $this->triggerEvent('stream');
+
         while (!feof($resource)) {
             echo fread($resource, $chunkSize);
         }
-        if ($close) fclose($resource);
+
+        if ($close) {
+            fclose($resource);
+        }
     }
 
     public function setCookie($name, $value, $expire = 0, $secure = true, $httpOnly = true, $sameSite = 'Lax')
     {
         $params = [
-            'expires' => $expire,
-            'path' => '/',
-            'secure' => $secure,
+            'expires'  => $expire,
+            'path'     => '/',
+            'secure'   => $secure,
             'httponly' => $httpOnly,
-            'samesite' => $sameSite
+            'samesite' => $sameSite,
         ];
         setcookie($name, $value, $params);
         $this->metrics['cookies']++;
@@ -182,18 +209,36 @@ class SynchrenityResponse
     }
 
     // Plugin system
-    public function registerPlugin($plugin) { $this->plugins[] = $plugin; }
+    public function registerPlugin($plugin)
+    {
+        $this->plugins[] = $plugin;
+    }
 
     // Event system
-    public function on($event, callable $cb) { $this->events[$event][] = $cb; }
-    protected function triggerEvent($event, $data = null) {
-        foreach ($this->events[$event] ?? [] as $cb) call_user_func($cb, $data, $this);
+    public function on($event, callable $cb)
+    {
+        $this->events[$event][] = $cb;
+    }
+    protected function triggerEvent($event, $data = null)
+    {
+        foreach ($this->events[$event] ?? [] as $cb) {
+            call_user_func($cb, $data, $this);
+        }
     }
 
     // Metrics
-    public function getMetrics() { return $this->metrics; }
+    public function getMetrics()
+    {
+        return $this->metrics;
+    }
 
     // Introspection
-    public function getHeaders() { return $this->headers; }
-    public function isSent() { return $this->sent; }
+    public function getHeaders()
+    {
+        return $this->headers;
+    }
+    public function isSent()
+    {
+        return $this->sent;
+    }
 }

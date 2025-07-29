@@ -1,16 +1,16 @@
 <?php
+
+declare(strict_types=1);
+
 namespace Synchrenity\Middleware;
 
 /**
  * Interface for robust, extensible middleware components.
  */
-interface SynchrenityMiddlewareInterface {
+interface SynchrenityMiddlewareInterface
+{
     /**
      * Process an incoming request and return a response, optionally delegating to the next middleware.
-     *
-     * @param mixed $request
-     * @param callable $next
-     * @return mixed
      */
     public function handle($request, callable $next);
 
