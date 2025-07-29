@@ -15,8 +15,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-      - name: Debug: print PHP version
-        run: php -v
+      # Debug line removed
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
