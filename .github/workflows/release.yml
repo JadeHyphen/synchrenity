@@ -24,7 +24,7 @@ jobs:
       - name: Validate composer.json and composer.lock
         run: composer validate --strict
       - name: Install dependencies
-        run: composer install --no-interaction --no-progress --prefer-dist
+        run: composer install --no-interaction
       - name: Run tests
         run: vendor/bin/phpunit --testdox
       - name: Create GitHub Release
