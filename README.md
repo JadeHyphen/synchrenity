@@ -24,27 +24,10 @@ if (!$allowed) {
 
 ## OAuth2 Provider
 
-SynchrenityOAuth2Provider supports secure OAuth2 authentication with state validation and PKCE.
-
-**Example Usage:**
-
-```php
-$oauth2 = new \Synchrenity\Auth\SynchrenityOAuth2Provider(require __DIR__.'/config/oauth2.php');
-$authUrl = $oauth2->getAuthUrl('google', $state, true); // PKCE enabled
 // Redirect user to $authUrl
-
 // On callback:
 $result = $oauth2->handleCallback('google', $_GET['code'], $_GET['state']);
-if (isset($result['error'])) {
-    // Handle error
-
-}
-
-
----
-- [Deployment](#deployment)
 - [Enterprise Readiness](#enterprise-readiness)
-- [Community & Support](#community--support)
 - [Troubleshooting & FAQ](#troubleshooting--faq)
 - [Release Info](#release-info)
 - [Credits](#credits)
@@ -70,7 +53,6 @@ See [API Documentation](docs/API.md) and [Usage Guide](docs/USAGE_GUIDE.md) for 
    ```sh
    git clone https://github.com/JadeHyphen/synchrenity.git
    cd synchrenity
-   ```
 2. **Install dependencies:**
    ```sh
    composer install
@@ -84,20 +66,9 @@ See [API Documentation](docs/API.md) and [Usage Guide](docs/USAGE_GUIDE.md) for 
    ```
 5. **Start the server:**
    ```sh
-   php -S localhost:8080 -t public
    ```
 
----
-
-## Directory Structure
-```
-app/                # Application code (controllers, models, services)
-config/             # Configuration files
-lib/                # Framework core (Auth, Routing, Security, etc.)
-database/           # Migrations, seeders, SQL scripts
-public/             # Public web root (index.php)
 tests/              # Automated tests
-vendor/             # Composer dependencies
 docs/               # Documentation and guides
 ```
 
@@ -151,11 +122,6 @@ atlas()->table('posts')->find($id);
 SynchrenityLogger supports multi-channel logging and audit integration.
 
 ```php
-$logger = synchrenity('logger');
-$logger->info('User registered', ['user_id' => $userId, 'channel' => 'app']);
-$logger->error('Failed login attempt', ['user_id' => $userId, 'channel' => 'security']);
-```
-
 ### Audit Trail Integration
 
 Inject the audit trail into core services for compliance and monitoring.
@@ -216,10 +182,6 @@ echo $weave->render('users/list', ['users' => $users]);
 $user = Atlas::table('users')->find($id);
 ```
 ### Pagination
-```php
-$paginator = new SynchrenityPaginator($data, $total, $page, $perPage);
-echo WeavePagination::render($paginator);
-```
 ### Error Handling
 ```php
 try {
@@ -270,31 +232,22 @@ $core->handleRequest();
 
 ### Migration & Seeder Example
 Create a migration in `database/migrations/`:
-```php
 return [
     'up' => function($db) {
         $db->exec('CREATE TABLE users (id INT AUTO_INCREMENT PRIMARY KEY, name VARCHAR(255));');
-    },
-    'down' => function($db) {
         $db->exec('DROP TABLE users');
     }
 ];
 ```
 Create a seeder in `database/seeders/`:
-```php
 return function($db) {
     $db->exec("INSERT INTO users (name) VALUES ('Admin')");
 };
-```
-
 ---
-
 ## Testing
 See [Test Suite Guide](tests/README.md) for more info.
 - All tests are in the `tests/` folder
-- Run with PHPUnit or Synchrenity CLI:
   ```sh
-  vendor/bin/phpunit --testdox
   php synchrenity test
   ```
 
@@ -302,45 +255,24 @@ See [Test Suite Guide](tests/README.md) for more info.
 
 ## Deployment
 See [Deployment Guide](docs/DEPLOYMENT.md) for Docker, cloud, and zero-downtime deployment.
-- Use `docker-compose.yml` for local development
 - Integrate with CI/CD using `.github/workflows/ci.yml`
 
 ---
 
-## Enterprise Readiness
 See [Enterprise Checklist](docs/ENTERPRISE_CHECKLIST.md) for a full list of requirements.
 - Features: audit logging, compliance, monitoring, SSO, scaling, backups
-
----
-
-## Contributing
 See [Contributing Guide](docs/CONTRIBUTING.md) for details.
-1. Fork the repo and create a feature branch
 2. Add tests for new features
 3. Submit a pull request with a detailed description
-
----
-
 ## License
-MIT
 
 ---
-
-## Documentation
-- [API Documentation](docs/API.md)
-- [Usage Guide](docs/USAGE_GUIDE.md)
-- [Deployment Guide](docs/DEPLOYMENT.md)
 - [Enterprise Checklist](docs/ENTERPRISE_CHECKLIST.md)
-
 ---
 
-## Community & Support
-- [Discord](https://discord.gg/your-synchrenity)
 - [Discussions](https://github.com/JadeHyphen/synchrenity/discussions)
-- [Issues](https://github.com/JadeHyphen/synchrenity/issues)
 
 ---
-
 ## Troubleshooting & FAQ
 - **Composer install fails:** Check PHP version and extension requirements.
 - **Migration errors:** Ensure your database is running and credentials are correct.
