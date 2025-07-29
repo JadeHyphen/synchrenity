@@ -56,7 +56,11 @@ if (class_exists('Synchrenity\\Plugins\\SynchrenityPluginManager')) {
 
 // Register logger if available
 if (class_exists('Synchrenity\\Support\\SynchrenityLogger')) {
-    $logger = new \Synchrenity\Support\SynchrenityLogger($config);
+    $logFile = __DIR__ . '/../storage/logs/app.log';
+    if (!is_dir(dirname($logFile))) {
+        mkdir(dirname($logFile), 0777, true);
+    }
+    $logger = new \Synchrenity\Support\SynchrenityLogger($logFile);
     $core->registerModule('logger', $logger);
 }
 
