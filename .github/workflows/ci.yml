@@ -45,7 +45,7 @@ jobs:
       - name: Run code style checks (php-cs-fixer)
         run: vendor/bin/php-cs-fixer fix --dry-run --diff
       - name: Run static analysis (phpstan)
-        run: vendor/bin/phpstan analyse --no-progress
+        run: vendor/bin/phpstan analyse --no-progress lib/ tests/
       - name: Run tests with coverage
         run: vendor/bin/phpunit --testdox --coverage-clover=coverage.xml || vendor/bin/phpunit --testdox
 
