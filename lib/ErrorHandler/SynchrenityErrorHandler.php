@@ -48,10 +48,16 @@ class SynchrenityErrorHandler
         $type             = $error['type']    ?? 'error';
         $message          = $error['message'] ?? 'Unknown error';
         $context          = $error['context'] ?? [];
+        if (!is_array($context)) {
+            $context = [];
+        }
         $code             = $error['code']    ?? 500;
         $errorId          = $this->generateErrorId($error);
         $error['id']      = $errorId;
-        $error['context'] = array_merge($context, $this->getEnrichedContext());
+        if (!is_array($error['context'])) {
+            $error['context'] = [];
+        }
+        $error['context'] = array_merge($error['context'], $this->getEnrichedContext());
         $this->context    = $error['context'];
 
         // Rate limiting (per type, IP, session, deduplication)
@@ -229,7 +235,11 @@ class SynchrenityErrorHandler
     {
         http_response_code($error['code'] ?? 500);
         echo '<pre style="color:red;background:#fff;padding:1em;">';
-        echo '<b>Error:</b> ' . htmlspecialchars($error['message'] ?? 'Unknown error') . "\n";
+        $msg = $error['message'] ?? 'Unknown error';
+        if (!is_string($msg)) {
+            $msg = strval($msg);
+        }
+        echo '<b>Error:</b> ' . htmlspecialchars($msg) . "\n";
 
         if (!empty($error['context'])) {
             echo '<b>Context:</b> ' . print_r($error['context'], true) . "\n";
@@ -252,7 +262,11 @@ class SynchrenityErrorHandler
 
         // Optionally show error code or support link
         if (!empty($error['code'])) {
-            echo '<p>Error Code: ' . htmlspecialchars($error['code']) . '</p>';
+            $code = $error['code'];
+            if (!is_string($code)) {
+                $code = strval($code);
+            }
+            echo '<p>Error Code: ' . htmlspecialchars($code) . '</p>';
         }
     }
 

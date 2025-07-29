@@ -37,7 +37,8 @@ if ($appConfig->featureEnabled('hot_reload') && isset($_GET['__reload_config']))
     $appConfig->reload();
 }
 // Initialize the Synchrenity core framework
-$core = new \Synchrenity\SynchrenityCore($appConfig);
+// Pass the config array, not the SynchrenityAppConfig object, to match the constructor
+$core = new \Synchrenity\SynchrenityCore($appConfig->all(), $appConfig->envAll());
 
 // Strict error reporting in dev
 if ($env === 'dev' || $appConfig->get('debug')) {
@@ -80,7 +81,7 @@ if (class_exists('Synchrenity\\Support\\SynchrenityHealthCheck')) {
 
 // Set up global error/exception handler if available
 if (class_exists('Synchrenity\\ErrorHandler\\SynchrenityErrorHandler')) {
-    $errorHandler = new \Synchrenity\ErrorHandler\SynchrenityErrorHandler($appConfig);
+    $errorHandler = new \Synchrenity\ErrorHandler\SynchrenityErrorHandler($appConfig->all());
     $errorHandler->register();
     $core->setErrorHandler([$errorHandler, 'handle']);
     if (method_exists($appConfig, 'registerPlugin')) $appConfig->registerPlugin($errorHandler);
@@ -94,7 +95,7 @@ if (($env === 'dev' || $appConfig->get('debug')) && class_exists('Synchrenity\\T
 // Dispatch a bootstrapped event for modules/plugins to hook into
 if (method_exists($core, 'dispatch')) {
     $core->dispatch('bootstrapped', $core);
-    if (method_exists($appConfig, 'triggerEvent')) $appConfig->triggerEvent('bootstrapped', $core);
+    // Do not call protected triggerEvent directly on $appConfig
 }
 
 // Return the core instance to be used by the public entry point

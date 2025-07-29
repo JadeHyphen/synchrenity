@@ -1,7 +1,3 @@
-    // --- Public accessors for introspection ---
-    public function all() { return $this->config; }
-    public function envAll() { return $this->env; }
-    public function contextAll() { return $this->context; }
 
 
 <?php
@@ -23,7 +19,7 @@ if (!function_exists('synchrenity_env')) {
             list($key, $val) = explode('=', $line, 2);
             $key = trim($key);
             $val = trim($val);
-            if (preg_match('/^("|\').*\1$/', $val)) {
+            if (preg_match('/^(["\']).*\1$/', $val)) {
                 $val = substr($val, 1, -1);
             }
             $val = preg_replace_callback('/\${([A-Z0-9_]+)}/', function($m) use ($env) {
@@ -39,7 +35,6 @@ if (!function_exists('synchrenity_env')) {
 }
 $env = synchrenity_env(__DIR__ . '/../.env');
 
-// --- Advanced App Config: plugin/event/metrics/context/introspection, hot-reload, feature flags, secrets, multi-env ---
 class SynchrenityAppConfig {
     protected $config = [];
     protected $env = [];
@@ -84,6 +79,10 @@ class SynchrenityAppConfig {
         // Could load from vault, env, or file
         return $this->env[$k] ?? ($this->config['secrets'][$k] ?? null);
     }
+    // --- Public accessors for introspection ---
+    public function all() { return $this->config; }
+    public function envAll() { return $this->env; }
+    public function contextAll() { return $this->context; }
 }
 
 $baseConfig = [

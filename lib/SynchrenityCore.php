@@ -284,6 +284,9 @@ class SynchrenityCore
     /**
      * Error handler callback
      */
+    /**
+     * Error handler instance (should be an object, not a callable)
+     */
     protected $errorHandler;
 
     /**
@@ -500,11 +503,38 @@ class SynchrenityCore
     /**
      * Set a custom error handler
      */
-    public function setErrorHandler(callable $handler)
+    /**
+     * Set the error handler instance (object, e.g. SynchrenityErrorHandler)
+     */
+    public function setErrorHandler($handler)
     {
         $this->errorHandler = $handler;
-        set_error_handler($handler);
-        set_exception_handler($handler);
+        if (is_object($handler) && method_exists($handler, 'phpErrorHandler') && method_exists($handler, 'phpExceptionHandler')) {
+            set_error_handler([$handler, 'phpErrorHandler']);
+            set_exception_handler([$handler, 'phpExceptionHandler']);
+        }
+    }
+
+    /**
+     * Handle an error using the error handler (always as array)
+     */
+    public function handleError($error)
+    {
+        if (!is_array($error)) {
+            $error = [
+                'type'    => 'error',
+                'message' => is_string($error) ? $error : 'Unknown error',
+                'context' => [],
+                'code'    => 500,
+            ];
+        }
+        if ($this->errorHandler && method_exists($this->errorHandler, 'handle')) {
+            $this->errorHandler->handle($error);
+        } else {
+            // Fallback: log or echo
+            $msg = $error['message'] ?? 'Unknown error';
+            error_log('[Synchrenity Error] ' . $msg);
+        }
     }
 
     /**
@@ -512,14 +542,14 @@ class SynchrenityCore
      */
     protected function setupErrorHandling()
     {
-        $this->setErrorHandler(function ($e) {
-            $msg = $e instanceof \Throwable ? $e->getMessage() : $e;
-
-            if ($this->logger) {
-                $this->logger->error($msg, ['exception' => $e]);
-            }
-            echo '[Synchrenity Error] ' . $msg . "\n";
-        });
+        // If SynchrenityErrorHandler exists, use it; else fallback
+        if (class_exists('Synchrenity\\ErrorHandler\\SynchrenityErrorHandler')) {
+            $handler = new \Synchrenity\ErrorHandler\SynchrenityErrorHandler(['logLevel' => 'error'], null, $this->logger);
+            $this->setErrorHandler($handler);
+        } else {
+            // fallback: log errors to logger or error_log
+            $this->setErrorHandler(null);
+        }
     }
 
     /**
