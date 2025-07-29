@@ -87,6 +87,5 @@
     },
     "bin": [
         "synchrenity"
-    ],
-    "version": "4.0.1"
+    ]
 }
