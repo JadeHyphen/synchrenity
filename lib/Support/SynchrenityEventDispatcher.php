@@ -42,6 +42,7 @@ class SynchrenityEventDispatcher
             // Do not add non-callable listeners
             return;
         }
+
         if (!isset($this->listeners[$event])) {
             $this->listeners[$event] = [];
         }
@@ -57,6 +58,7 @@ class SynchrenityEventDispatcher
             // Do not add non-callable hooks
             return;
         }
+
         if (!isset($this->hooks[$type])) {
             $this->hooks[$type] = [];
         }
@@ -77,6 +79,7 @@ class SynchrenityEventDispatcher
         if (!is_array($this->middleware)) {
             return false;
         }
+
         foreach ($this->middleware as $mw) {
             if (is_callable($mw)) {
                 if ($mw($event, $payload, $context) === false) {
@@ -98,6 +101,7 @@ class SynchrenityEventDispatcher
                 } else {
                     $callable = $listener;
                 }
+
                 if (is_callable($callable)) {
                     try {
                         $callable($payload, $context);
