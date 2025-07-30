@@ -1,8 +1,11 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Synchrenity;
 
-class SynchrenityCore {
+class SynchrenityCore
+{
     /**
      * Modern logging: SynchrenityLogger instance (file, stdout, JSON, rotation, context, channels)
      */
@@ -265,11 +268,11 @@ class SynchrenityCore {
      */
     protected $cliKernel;
 
+
     /**
      * Audit trail instance
      */
 
-    
     /**
      * Plugin manager module
      *
@@ -277,7 +280,6 @@ class SynchrenityCore {
      */
     public $pluginManager = null;
 
-    
     /**
      * Health check module
      *
@@ -285,7 +287,6 @@ class SynchrenityCore {
      */
     public $health = null;
 
-    
     /**
      * Test utilities module
      *
