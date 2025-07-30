@@ -371,6 +371,7 @@ class SynchrenitySecurityManager
         if (!isset($this->eventHooks[$event]) || !is_array($this->eventHooks[$event])) {
             return;
         }
+
         foreach ($this->eventHooks[$event] as $hook) {
             if (is_callable($hook)) {
                 try {
