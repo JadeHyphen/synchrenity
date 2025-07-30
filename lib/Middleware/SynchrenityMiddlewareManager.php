@@ -20,6 +20,7 @@ class SynchrenityMiddlewareManager
             throw new \InvalidArgumentException('Middleware must be an object with a handle method');
         }
         $this->middleware[] = $middleware;
+
         return $this;
     }
 
@@ -42,6 +43,7 @@ class SynchrenityMiddlewareManager
             throw new \InvalidArgumentException('Error handler must be callable');
         }
         $this->errorHandlers[] = $handler;
+
         return $this;
     }
 
@@ -51,6 +53,7 @@ class SynchrenityMiddlewareManager
             throw new \InvalidArgumentException('Hook event must be string and callback must be callable');
         }
         $this->hooks[$event][] = $cb;
+
         return $this;
     }
 
