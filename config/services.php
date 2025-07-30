@@ -3,9 +3,10 @@
 use Synchrenity\Support\SynchrenityServiceContainer;
 use Synchrenity\Auth\Auth;
 use Synchrenity\ORM\Atlas;
+use Psr\Container\ContainerInterface;
 
 // --- Advanced Service Container: plugin/event/metrics/context/introspection, hot-reload, dynamic DI, robust UX ---
-class SynchrenityServiceContainerExt extends SynchrenityServiceContainer {
+class SynchrenityServiceContainerExt extends SynchrenityServiceContainer implements ContainerInterface {
     protected $plugins = [];
     protected $events = [];
     protected $metrics = [ 'gets' => 0, 'sets' => 0, 'reloads' => 0 ];
@@ -35,8 +36,10 @@ $synchrenityContainer->register('auth', function($container) {
     return new \Synchrenity\Auth\SynchrenityAuth();
 });
 $synchrenityContainer->register('atlas', function($container) {
-    // If you have a SynchrenityAtlas class, use it here. Otherwise, use Atlas facade directly.
-    return new Atlas();
+    // Use the SynchrenityAtlas class from the correct namespace
+    // You may want to pass a PDO connection or config here
+    $pdo = null; // TODO: Replace with your PDO instance or DSN string
+    return new \Synchrenity\Atlas\SynchrenityAtlas($pdo);
 });
 $synchrenityContainer->singleton('policy', function() {
     return new \Synchrenity\Security\SynchrenityPolicyManager();
