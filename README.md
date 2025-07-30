@@ -309,7 +309,7 @@ See [Contributing Guide](docs/CONTRIBUTING.md) for details.
 ---
 
 ## Release Info
-- Current version: `2.2.0`
+- Current version: `4.0.4`
 - See [Releases](https://github.com/JadeHyphen/synchrenity/releases) for changelog and updates.
 
 ---
