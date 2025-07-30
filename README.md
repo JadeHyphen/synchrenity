@@ -8,15 +8,21 @@ Synchrenity is a scalable PHP framework for building enterprise-grade applicatio
 
 # Synchrenity API Rate Limiting & OAuth2 Integration
 
+
 ## API Rate Limiting
 
-SynchrenityApiRateLimiter provides per-endpoint and per-role rate limiting with burst control and analytics.
+Synchrenity provides a robust, dynamic API rate limiting system with:
+- Centralized config (`config/api_rate_limits.php`) for per-endpoint and per-role limits
+- Advanced limiter (`lib/RateLimit/SynchrenityRateLimiter.php`) with plugin/event support, burst, anomaly detection, and more
+- Service container integration for easy access and dependency injection
 
-**Example Usage:**
+**Example Usage (Service Container):**
 
 ```php
-$rateLimiter = new \Synchrenity\API\SynchrenityApiRateLimiter(require __DIR__.'/config/api_rate_limits.php');
-$allowed = $rateLimiter->check($userId, $role, 'GET:/api/resource');
+$rateLimiter = $synchrenityContainer->get('rate_limiter');
+$apiLimits = $synchrenityContainer->get('api_rate_limits');
+$limitConf = $apiLimits->get('GET:/api/resource', 'user');
+$allowed = $rateLimiter->check('user123', 'GET:/api/resource');
 if (!$allowed) {
     // Handle rate limit exceeded
 }
@@ -93,22 +99,40 @@ docs/               # Documentation and guides
 
 Synchrenity provides a robust service container for automatic dependency injection and global facades for easy access to core services.
 
+
 **Registering Services:**
 ```php
 $synchrenityContainer->register('auth', function($container) {
     return new \Synchrenity\Auth\SynchrenityAuth();
 });
-$synchrenityContainer->singleton('logger', function($container) {
-    return new \Synchrenity\Support\SynchrenityLogger();
+$synchrenityContainer->register('atlas', function($container) {
+    $pdo = null; // Provide your PDO instance or DSN string
+    return new \Synchrenity\Atlas\SynchrenityAtlas($pdo);
+});
+$synchrenityContainer->register('api_rate_limits', function($container) {
+    return require __DIR__ . '/config/api_rate_limits.php';
+});
+$synchrenityContainer->register('rate_limiter', function($container) {
+    $rateLimiter = new \Synchrenity\RateLimit\SynchrenityRateLimiter();
+    $apiRateLimitsConfig = $container->get('api_rate_limits');
+    $rateLimiter->setApiRateLimitsConfig($apiRateLimitsConfig);
+    return $rateLimiter;
 });
 ```
+
 
 **Using Facades:**
 ```php
 $user = Auth::user();
 $table = Atlas::table('users');
-$logger = synchrenity('logger');
-$logger->info('User logged in', ['user_id' => $user->id]);
+```
+
+**Using Rate Limiter and API Rate Limits:**
+```php
+$rateLimiter = $synchrenityContainer->get('rate_limiter');
+$apiLimits = $synchrenityContainer->get('api_rate_limits');
+$limitConf = $apiLimits->get('GET:/api/resource', 'user');
+$allowed = $rateLimiter->check('user123', 'GET:/api/resource');
 ```
 
 **Global Helpers:**
