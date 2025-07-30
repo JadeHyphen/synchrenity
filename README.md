@@ -30,9 +30,11 @@ if (!$allowed) {
 
 ## OAuth2 Provider
 
+```php
 // Redirect user to $authUrl
 // On callback:
 $result = $oauth2->handleCallback('google', $_GET['code'], $_GET['state']);
+```
 - [Enterprise Readiness](#enterprise-readiness)
 - [Troubleshooting & FAQ](#troubleshooting--faq)
 - [Release Info](#release-info)
