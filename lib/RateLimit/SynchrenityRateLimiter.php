@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Synchrenity\RateLimit;
 
+use SynchrenityApiRateLimitsConfig;
+
 class SynchrenityRateLimiter
 {
     // --- ADVANCED: AI/ML anomaly detection (optional, pluggable) ---
@@ -127,6 +129,11 @@ class SynchrenityRateLimiter
     protected $actionGroups   = [];
     protected $stats          = [ 'checks' => 0, 'allowed' => 0, 'denied' => 0 ];
     protected $eventHooks     = [ 'allow' => [], 'deny' => [], 'lockout' => [] ];
+
+    /**
+     * @var SynchrenityApiRateLimitsConfig|null
+     */
+    protected $apiRateLimitsConfig = null;
 
     public function __construct($backend = 'memory', $options = [])
     {
@@ -389,6 +396,29 @@ class SynchrenityRateLimiter
     public function addHook(callable $hook)
     {
         $this->hooks[] = $hook;
+    }
+
+    /**
+     * Inject the API rate limits config for dynamic limit resolution.
+     * @param SynchrenityApiRateLimitsConfig $config
+     */
+    public function setApiRateLimitsConfig($config)
+    {
+        $this->apiRateLimitsConfig = $config;
+    }
+
+    /**
+     * Get the rate limit config for a given endpoint and role.
+     * @param string $endpoint
+     * @param string $role
+     * @return array|null
+     */
+    public function getApiRateLimit($endpoint, $role = 'default')
+    {
+        if ($this->apiRateLimitsConfig) {
+            return $this->apiRateLimitsConfig->get($endpoint, $role);
+        }
+        return null;
     }
 
     // Check rate limit for user/action
