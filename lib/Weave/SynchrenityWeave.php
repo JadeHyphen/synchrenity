@@ -259,6 +259,7 @@ class SynchrenityWeave
             // Default: escape output, but check if variable exists
             // If variable is not set, output empty string to avoid undefined variable/constant warnings
             $safeExpr = preg_replace('/^([a-zA-Z_][a-zA-Z0-9_]*)$/', '(isset($\1) ? $\1 : (isset($this->variables["\1"]) ? $this->variables["\1"] : ""))', $expr);
+
             return '<?php echo htmlspecialchars(' . $safeExpr . ', ENT_QUOTES, "UTF-8"); ?>';
         }, $compiled);
 
@@ -339,12 +340,15 @@ class SynchrenityWeave
     public function validateTemplate($template)
     {
         $errors = [];
+
         if (substr_count($template, $this->tagOpen) !== substr_count($template, $this->tagClose)) {
             $errors[] = 'Unclosed tag detected.';
         }
+
         if (substr_count($template, $this->echoOpen) !== substr_count($template, $this->echoClose)) {
             $errors[] = 'Unclosed echo detected.';
         }
+
         // Add more checks as needed
         return empty($errors) ? true : $errors;
     }
@@ -360,15 +364,17 @@ class SynchrenityWeave
     {
         // Robust partial/component discovery
         $partialsDir = rtrim($this->templatePath, '/') . '/partials';
+
         if (is_dir($partialsDir)) {
             foreach (glob($partialsDir . '/*.weave.php') as $file) {
-                $name = basename($file, '.weave.php');
+                $name                  = basename($file, '.weave.php');
                 $this->partials[$name] = $file;
             }
         }
+
         if ($this->componentsDir && is_dir($this->componentsDir)) {
             foreach (glob($this->componentsDir . '/*.php') as $file) {
-                $name = basename($file, '.php');
+                $name                    = basename($file, '.php');
                 $this->components[$name] = require $file;
             }
         }
