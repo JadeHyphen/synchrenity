@@ -74,3 +74,7 @@ Atlas::setContainer($synchrenityContainer);
 // Usage examples:
 // $user = Auth::user();
 // $table = Atlas::table('users');
+// $rateLimiter = $synchrenityContainer->get('rate_limiter');
+// $apiLimits = $synchrenityContainer->get('api_rate_limits');
+// $limitConf = $apiLimits->get('GET:/api/resource', 'user');
+// $allowed = $rateLimiter->check('user123', 'GET:/api/resource');
