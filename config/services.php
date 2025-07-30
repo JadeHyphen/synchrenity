@@ -3,6 +3,7 @@
 use Synchrenity\Support\SynchrenityServiceContainer;
 use Synchrenity\Auth\Auth;
 use Synchrenity\ORM\Atlas;
+use Synchrenity\RateLimit\SynchrenityRateLimiter;
 use Psr\Container\ContainerInterface;
 
 // --- Advanced Service Container: plugin/event/metrics/context/introspection, hot-reload, dynamic DI, robust UX ---
@@ -43,6 +44,17 @@ $synchrenityContainer->register('atlas', function($container) {
 });
 $synchrenityContainer->singleton('policy', function() {
     return new \Synchrenity\Security\SynchrenityPolicyManager();
+});
+$synchrenityContainer->register('api_rate_limits', function($container) {
+    // Load the API rate limits config
+    return require __DIR__ . '/api_rate_limits.php';
+});
+$synchrenityContainer->register('rate_limiter', function($container) {
+    $rateLimiter = new SynchrenityRateLimiter();
+    // Inject the API rate limits config
+    $apiRateLimitsConfig = $container->get('api_rate_limits');
+    $rateLimiter->setApiRateLimitsConfig($apiRateLimitsConfig);
+    return $rateLimiter;
 });
 
 // Example: dynamic service resolution
