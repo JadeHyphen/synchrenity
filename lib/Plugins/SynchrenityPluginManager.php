@@ -6,17 +6,21 @@ namespace Synchrenity\Plugins;
 
 class SynchrenityPluginManager
 {
-    protected $plugins  = [];
-    protected $metadata = [];
-    protected $enabled  = [];
-    protected $contexts = [];
+    protected array $plugins  = [];
+    protected array $metadata = [];
+    protected array $enabled  = [];
+    protected array $contexts = [];
 
     /**
      * Register a plugin with metadata and lifecycle hooks.
      * $plugin can be a callable or an array with keys: init, boot, shutdown, enable, disable, meta
      */
-    public function register($name, $plugin)
+    public function register(string $name, $plugin): void
     {
+        if (empty($name)) {
+            throw new \InvalidArgumentException('Plugin name cannot be empty');
+        }
+
         if ($this->has($name)) {
             throw new \RuntimeException("Plugin '$name' is already registered.");
         }
@@ -28,6 +32,7 @@ class SynchrenityPluginManager
         } else {
             throw new \InvalidArgumentException('Plugin must be callable or array.');
         }
+        
         $meta = $plugin['meta'] ?? [];
 
         // Dependency resolution
@@ -36,7 +41,6 @@ class SynchrenityPluginManager
                 if (!$this->has($dep)) {
                     $this->enabled[$name] = false;
                     error_log("[PluginManager] Plugin '$name' disabled: missing dependency '$dep'.");
-
                     return;
                 }
             }
@@ -73,7 +77,7 @@ class SynchrenityPluginManager
     }
 
     /** Boot all enabled plugins (calls boot hook if present) */
-    public function boot()
+    public function boot(): void
     {
         foreach ($this->plugins as $name => $plugin) {
             if (!$this->enabled[$name]) {
@@ -92,7 +96,7 @@ class SynchrenityPluginManager
     }
 
     /** Shutdown all enabled plugins (calls shutdown hook if present) */
-    public function shutdown()
+    public function shutdown(): void
     {
         foreach ($this->plugins as $name => $plugin) {
             if (!$this->enabled[$name]) {
@@ -142,37 +146,37 @@ class SynchrenityPluginManager
     }
 
     /** Check if a plugin is registered */
-    public function has($name)
+    public function has(string $name): bool
     {
         return isset($this->plugins[$name]);
     }
 
     /** Get a plugin's callable or array */
-    public function get($name)
+    public function get(string $name)
     {
         return $this->plugins[$name] ?? null;
     }
 
     /** Get plugin metadata */
-    public function getMeta($name)
+    public function getMeta(string $name): array
     {
         return $this->metadata[$name] ?? [];
     }
 
     /** Check if a plugin is enabled */
-    public function isEnabled($name)
+    public function isEnabled(string $name): bool
     {
         return $this->enabled[$name] ?? false;
     }
 
     /** Get plugin context (isolated per plugin) */
-    public function getContext($name)
+    public function getContext(string $name)
     {
         return $this->contexts[$name] ?? null;
     }
 
     /** Auto-discover and register plugins from a directory */
-    public function discover($dir)
+    public function discover(string $dir): void
     {
         if (!is_dir($dir)) {
             return;

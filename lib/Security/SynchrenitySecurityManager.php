@@ -11,7 +11,7 @@ namespace Synchrenity\Security;
 class SynchrenitySecurityManager
 {
     // Authentication modules
-    protected $authModules = [];
+    protected array $authModules = [];
     protected $userProvider;
     protected $sessionManager;
     protected $tokenManager;
@@ -21,16 +21,16 @@ class SynchrenitySecurityManager
     // Authorization modules
     protected $rbac;
     protected $abac;
-    protected $policies = [];
-    protected $guards   = [];
+    protected array $policies = [];
+    protected array $guards   = [];
 
     // Encryption/hashing
-    protected $encryptionKey;
+    protected ?string $encryptionKey = null;
     protected $hasher;
 
     // Validation/sanitization
-    protected $validators = [];
-    protected $sanitizers = [];
+    protected array $validators = [];
+    protected array $sanitizers = [];
 
     // Protection modules
     protected $csrfProtector;
@@ -48,19 +48,19 @@ class SynchrenitySecurityManager
     /**
      * Security event hooks (onLogin, onLogout, onAuthFail, onRateLimit, etc.)
      */
-    protected $eventHooks = [];
+    protected array $eventHooks = [];
 
     /**
      * Security monitoring and alerts (stub)
      */
-    protected $alerts = [];
+    protected array $alerts = [];
 
     /**
      * Custom error handling for security operations
      */
-    protected $lastError;
+    protected ?string $lastError = null;
 
-    public function __construct($config = [])
+    public function __construct(array $config = [])
     {
         // Initialize modules from config or defaults
         $this->encryptionKey = $config['encryption_key'] ?? bin2hex(random_bytes(32));
@@ -71,53 +71,72 @@ class SynchrenitySecurityManager
     /**
      * Register authentication module (e.g., password, token, OAuth, MFA)
      */
-    public function registerAuthModule($name, $module)
+    public function registerAuthModule(string $name, $module): void
     {
+        if (empty($name)) {
+            throw new \InvalidArgumentException('Authentication module name cannot be empty');
+        }
         $this->authModules[$name] = $module;
     }
 
     /**
      * Authenticate user (delegates to registered modules)
      */
-    public function authenticate($credentials, $type = 'password')
+    public function authenticate($credentials, string $type = 'password'): bool
     {
         if (!isset($this->authModules[$type])) {
+            $this->lastError = "Authentication module '$type' not found";
             return false;
         }
 
-        return $this->authModules[$type]->authenticate($credentials);
+        try {
+            return $this->authModules[$type]->authenticate($credentials);
+        } catch (\Throwable $e) {
+            $this->lastError = $e->getMessage();
+            return false;
+        }
     }
 
     /**
      * Authorize user (RBAC, ABAC, policies, guards)
      */
-    public function authorize($user, $action, $resource = null, $context = [])
+    public function authorize($user, string $action, $resource = null, array $context = []): bool
     {
-        // RBAC check
-        if ($this->rbac && !$this->rbac->can($user, $action, $resource)) {
+        if (empty($action)) {
+            $this->lastError = 'Action cannot be empty';
             return false;
         }
 
-        // ABAC check
-        if ($this->abac && !$this->abac->can($user, $action, $resource, $context)) {
+        try {
+            // RBAC check
+            if ($this->rbac && !$this->rbac->can($user, $action, $resource)) {
+                return false;
+            }
+
+            // ABAC check
+            if ($this->abac && !$this->abac->can($user, $action, $resource, $context)) {
+                return false;
+            }
+
+            // Policy check
+            foreach ($this->policies as $policy) {
+                if (!$policy->check($user, $action, $resource, $context)) {
+                    return false;
+                }
+            }
+
+            // Guard check
+            foreach ($this->guards as $guard) {
+                if (!$guard->check($user, $action, $resource, $context)) {
+                    return false;
+                }
+            }
+
+            return true;
+        } catch (\Throwable $e) {
+            $this->lastError = $e->getMessage();
             return false;
         }
-
-        // Policy check
-        foreach ($this->policies as $policy) {
-            if (!$policy->check($user, $action, $resource, $context)) {
-                return false;
-            }
-        }
-
-        // Guard check
-        foreach ($this->guards as $guard) {
-            if (!$guard->check($user, $action, $resource, $context)) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     /**

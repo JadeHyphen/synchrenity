@@ -7,47 +7,47 @@ namespace Synchrenity\Audit;
 class SynchrenityAuditTrail
 {
     // Plugin/event/metrics/context/introspection system
-    private $plugins = [];
-    private $events  = [];
-    private $metrics = [
+    private array $plugins = [];
+    private array $events  = [];
+    private array $metrics = [
         'logs'      => 0,
         'errors'    => 0,
         'alerts'    => 0,
         'anomalies' => 0,
         'forwards'  => 0,
     ];
-    private $context = [];
+    private array $context = [];
     // Core properties
-    private $logFile;
+    private string $logFile;
     private $db;
     private $alertCallback;
-    private $retentionDays = 90;
-    private $roleAccess    = [];
+    private int $retentionDays = 90;
+    private array $roleAccess    = [];
 
     // Advanced features
-    private $encryptionKey;
-    private $tenantId;
+    private ?string $encryptionKey = null;
+    private ?string $tenantId = null;
     private $geoProvider;
-    private $customSchema = [];
-    private $apiToken;
-    private $immutable = false;
+    private array $customSchema = [];
+    private ?string $apiToken = null;
+    private bool $immutable = false;
 
-    public function __construct($logFile = null, $db = null)
+    public function __construct(?string $logFile = null, $db = null)
     {
         $this->logFile = $logFile ?? __DIR__ . '/audit.log';
         $this->db      = $db;
     }
 
     // Feature setters
-    public function setAlertCallback(callable $callback)
+    public function setAlertCallback(callable $callback): void
     {
         $this->alertCallback = $callback;
     }
-    public function setRoleAccess(array $roles)
+    public function setRoleAccess(array $roles): void
     {
         $this->roleAccess = $roles;
     }
-    public function setCustomSchema(array $schema)
+    public function setCustomSchema(array $schema): void
     {
         $this->customSchema = $schema;
     }
