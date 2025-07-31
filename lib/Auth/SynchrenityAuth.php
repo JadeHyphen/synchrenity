@@ -31,12 +31,12 @@ class SynchrenityAuth
     // Audit trail instance (should be injected or set from SynchrenityCore)
     protected $auditTrail;
 
-    public function setAuditTrail($auditTrail)
+    public function setAuditTrail($auditTrail): void
     {
         $this->auditTrail = $auditTrail;
     }
 
-    protected function audit($action, $userId, $meta = [])
+    protected function audit(string $action, $userId, array $meta = []): void
     {
         if ($this->auditTrail) {
             $this->auditTrail->log($action, [], $userId, $meta);
@@ -45,53 +45,74 @@ class SynchrenityAuth
     /**
      * Production-grade TOTP verification (MFA/2FA)
      */
-    public function verifyTotp($userId, $code)
+    public function verifyTotp($userId, string $code): bool
     {
-        $this->metrics['mfa']++;
-        $user = $this->userModel->find($userId);
-
-        if (!$user || empty($user->mfa_secret)) {
+        if (empty($code) || !ctype_digit($code) || strlen($code) !== 6) {
             return false;
         }
-        $window    = 1; // Acceptable time window
-        $timestamp = floor(time() / 30);
 
-        for ($i = -$window; $i <= $window; $i++) {
-            $hash = hash_hmac('sha1', ($timestamp + $i) . $user->mfa_secret, $this->encryptionKey ?? 'default_key');
-            $totp = substr(hash('sha256', $hash), 0, 6);
+        $this->metrics['mfa']++;
+        
+        try {
+            $user = $this->userModel->find($userId);
 
-            if ($totp === $code) {
-                $this->trigger('mfa_success', $userId);
+            if (!$user || empty($user->mfa_secret)) {
+                return false;
+            }
+            
+            $window    = 1; // Acceptable time window
+            $timestamp = floor(time() / 30);
 
-                foreach ($this->plugins as $plugin) {
-                    if (is_callable([$plugin, 'onMfaSuccess'])) {
-                        $plugin->onMfaSuccess($userId, $this);
+            for ($i = -$window; $i <= $window; $i++) {
+                $hash = hash_hmac('sha1', ($timestamp + $i) . $user->mfa_secret, $this->encryptionKey ?? 'default_key');
+                $totp = substr(hash('sha256', $hash), 0, 6);
+
+                if (hash_equals($totp, $code)) {
+                    $this->trigger('mfa_success', $userId);
+                    $this->audit('mfa_success', $userId);
+
+                    foreach ($this->plugins as $plugin) {
+                        if (is_callable([$plugin, 'onMfaSuccess'])) {
+                            $plugin->onMfaSuccess($userId, $this);
+                        }
                     }
+
+                    return true;
                 }
-
-                return true;
             }
-        }
-        $this->trigger('mfa_fail', $userId);
+            
+            $this->trigger('mfa_fail', $userId);
+            $this->audit('mfa_fail', $userId);
 
-        foreach ($this->plugins as $plugin) {
-            if (is_callable([$plugin, 'onMfaFail'])) {
-                $plugin->onMfaFail($userId, $this);
+            foreach ($this->plugins as $plugin) {
+                if (is_callable([$plugin, 'onMfaFail'])) {
+                    $plugin->onMfaFail($userId, $this);
+                }
             }
-        }
 
-        return false;
+            return false;
+        } catch (\Throwable $e) {
+            $this->audit('mfa_error', $userId, ['error' => $e->getMessage()]);
+            return false;
+        }
     }
 
     /**
      * Robust OAuth2 social login flow (stub)
      */
-    public function handleOAuthCallback($provider, $code)
+    public function handleOAuthCallback(string $provider, string $code): bool
     {
+        if (empty($provider) || empty($code)) {
+            $this->errors['social'] = 'Invalid provider or code.';
+            $this->metrics['errors']++;
+            return false;
+        }
+
         if (!isset($this->socialProviders[$provider])) {
             $this->errors['social'] = 'Provider not supported.';
             $this->metrics['errors']++;
             $this->trigger('social_error', $provider);
+            $this->audit('social_error', null, ['provider' => $provider, 'error' => 'unsupported']);
 
             foreach ($this->plugins as $plugin) {
                 if (is_callable([$plugin, 'onSocialError'])) {
@@ -101,33 +122,41 @@ class SynchrenityAuth
 
             return false;
         }
-        $accessToken = 'stub_token';
-        $userInfo    = ['id' => 'stub_id', 'email' => 'stub@example.com'];
-        $user        = $this->userModel->findBySocialId($provider, $userInfo['id']);
 
-        if (!$user) {
-            $userId = $this->userModel->create([
-                'email'     => $userInfo['email'],
-                'social_id' => $userInfo['id'],
-                'provider'  => $provider,
-            ]);
-            $this->session->set('user_id', $userId);
-            $this->audit('social_register', $userId);
-            $this->metrics['logins']++;
-        } else {
-            $this->session->set('user_id', $user->id);
-            $this->audit('social_login', $user->id);
-            $this->metrics['logins']++;
-        }
-        $this->trigger('social_login', $provider);
+        try {
+            $accessToken = 'stub_token';
+            $userInfo    = ['id' => 'stub_id', 'email' => 'stub@example.com'];
+            $user        = $this->userModel->findBySocialId($provider, $userInfo['id']);
 
-        foreach ($this->plugins as $plugin) {
-            if (is_callable([$plugin, 'onSocialLogin'])) {
-                $plugin->onSocialLogin($provider, $this);
+            if (!$user) {
+                $userId = $this->userModel->create([
+                    'email'     => $userInfo['email'],
+                    'social_id' => $userInfo['id'],
+                    'provider'  => $provider,
+                ]);
+                $this->session->set('user_id', $userId);
+                $this->audit('social_register', $userId);
+                $this->metrics['logins']++;
+            } else {
+                $this->session->set('user_id', $user->id);
+                $this->audit('social_login', $user->id);
+                $this->metrics['logins']++;
             }
-        }
+            $this->trigger('social_login', $provider);
 
-        return true;
+            foreach ($this->plugins as $plugin) {
+                if (is_callable([$plugin, 'onSocialLogin'])) {
+                    $plugin->onSocialLogin($provider, $this);
+                }
+            }
+
+            return true;
+        } catch (\Throwable $e) {
+            $this->audit('social_error', null, ['provider' => $provider, 'error' => $e->getMessage()]);
+            $this->errors['social'] = 'Authentication failed: ' . $e->getMessage();
+            $this->metrics['errors']++;
+            return false;
+        }
     }
     // Plugin system
     public function registerPlugin($plugin)

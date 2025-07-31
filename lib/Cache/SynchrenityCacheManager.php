@@ -7,18 +7,13 @@ namespace Synchrenity\Cache;
 class SynchrenityCacheManager
 {
     protected $auditTrail;
-    protected $backend = 'memory'; // memory, file, redis
-    protected $cache   = [];
-    protected $filePath;
-    /**
-     * Redis instance (uncomment and enable if you have the Redis extension)
-     *
-     * @var \ Redis|null
-     */
-    // protected $redis = null;
-    protected $redisEnabled = false;
+    protected string $backend = 'memory'; // memory, file, redis
+    protected array $cache   = [];
+    protected ?string $filePath = null;
+    protected ?\Redis $redis = null;
+    protected bool $redisEnabled = false;
 
-    public function __construct($backend = 'memory', $options = [])
+    public function __construct(string $backend = 'memory', array $options = [])
     {
         $this->backend = $backend;
 
@@ -26,97 +21,131 @@ class SynchrenityCacheManager
             $this->filePath = $options['filePath'] ?? __DIR__ . '/cache.data';
 
             if (!file_exists($this->filePath)) {
+                $dir = dirname($this->filePath);
+                if (!is_dir($dir)) {
+                    mkdir($dir, 0755, true);
+                }
                 file_put_contents($this->filePath, json_encode([]));
             }
             $this->loadFileCache();
         } elseif ($backend === 'redis') {
-            // To enable Redis, uncomment the redis property above and this block, and ensure the Redis extension is installed.
-            // if (class_exists('Redis')) {
-            //     $this->redis = new \Redis();
-            //     $host = $options['host'] ?? '127.0.0.1';
-            //     $port = $options['port'] ?? 6379;
-            //     $this->redis->connect($host, $port);
-            //     $this->redisEnabled = true;
-            // } else {
-            //     $this->backend = 'memory';
-            //     $this->redisEnabled = false;
-            //     if (isset($options['auditTrail'])) {
-            //         $this->auditTrail = $options['auditTrail'];
-            //     }
-            //     if ($this->auditTrail) {
-            //         $this->auditTrail->log('cache_fallback', ['reason' => 'Redis extension not available'], null);
-            //     }
-            // }
-            // Default: fallback to memory
-            $this->backend      = 'memory';
-            $this->redisEnabled = false;
-
-            if (isset($options['auditTrail'])) {
-                $this->auditTrail = $options['auditTrail'];
+            if (class_exists('Redis') && extension_loaded('redis')) {
+                $this->redis = new \Redis();
+                $host = $options['host'] ?? '127.0.0.1';
+                $port = $options['port'] ?? 6379;
+                
+                try {
+                    if ($this->redis->connect($host, $port)) {
+                        $this->redisEnabled = true;
+                    } else {
+                        throw new \RuntimeException("Failed to connect to Redis server at $host:$port");
+                    }
+                } catch (\Throwable $e) {
+                    $this->backend = 'memory';
+                    $this->redisEnabled = false;
+                    if (isset($options['auditTrail'])) {
+                        $this->auditTrail = $options['auditTrail'];
+                    }
+                    if ($this->auditTrail) {
+                        $this->auditTrail->log('cache_fallback', ['reason' => 'Redis connection failed: ' . $e->getMessage()], null);
+                    }
+                }
+            } else {
+                $this->backend = 'memory';
+                $this->redisEnabled = false;
+                if (isset($options['auditTrail'])) {
+                    $this->auditTrail = $options['auditTrail'];
+                }
+                if ($this->auditTrail) {
+                    $this->auditTrail->log('cache_fallback', ['reason' => 'Redis extension not available'], null);
+                }
             }
+        }
 
-            if ($this->auditTrail) {
-                $this->auditTrail->log('cache_fallback', ['reason' => 'Redis extension not available'], null);
-            }
+        if (isset($options['auditTrail'])) {
+            $this->auditTrail = $options['auditTrail'];
         }
     }
 
-    public function setAuditTrail($auditTrail)
+    public function setAuditTrail($auditTrail): void
     {
         $this->auditTrail = $auditTrail;
     }
 
-    public function set($key, $value, $ttl = 3600)
+    public function set(string $key, $value, int $ttl = 3600): void
     {
-        $expires = time() + $ttl;
-
-        if ($this->backend === 'memory') {
-            $this->cache[$key] = ['value' => $value, 'expires' => $expires];
-        } elseif ($this->backend === 'file') {
-            $this->cache[$key] = ['value' => $value, 'expires' => $expires];
-            $this->saveFileCache();
-        } elseif ($this->backend === 'redis' && $this->redisEnabled) {
-            // $this->redis->setex($key, $ttl, serialize($value));
+        if (empty($key)) {
+            throw new \InvalidArgumentException('Cache key cannot be empty');
         }
 
-        if ($this->auditTrail) {
-            $this->auditTrail->log('set_cache', ['key' => $key, 'value' => $value, 'ttl' => $ttl], null);
+        $expires = time() + $ttl;
+
+        try {
+            if ($this->backend === 'memory') {
+                $this->cache[$key] = ['value' => $value, 'expires' => $expires];
+            } elseif ($this->backend === 'file') {
+                $this->cache[$key] = ['value' => $value, 'expires' => $expires];
+                $this->saveFileCache();
+            } elseif ($this->backend === 'redis' && $this->redisEnabled && $this->redis) {
+                $this->redis->setex($key, $ttl, serialize($value));
+            }
+
+            if ($this->auditTrail) {
+                $this->auditTrail->log('set_cache', ['key' => $key, 'ttl' => $ttl], null);
+            }
+        } catch (\Throwable $e) {
+            if ($this->auditTrail) {
+                $this->auditTrail->log('cache_error', ['action' => 'set', 'key' => $key, 'error' => $e->getMessage()], null);
+            }
+            throw new \RuntimeException("Failed to set cache key '$key': " . $e->getMessage(), 0, $e);
         }
     }
 
-    public function get($key)
+    public function get(string $key)
     {
-        if ($this->backend === 'memory') {
-            if (!isset($this->cache[$key])) {
-                return null;
-            }
-
-            if ($this->cache[$key]['expires'] < time()) {
-                unset($this->cache[$key]);
-
-                return null;
-            }
-
-            return $this->cache[$key]['value'];
-        } elseif ($this->backend === 'file') {
-            if (!isset($this->cache[$key])) {
-                return null;
-            }
-
-            if ($this->cache[$key]['expires'] < time()) {
-                unset($this->cache[$key]);
-                $this->saveFileCache();
-
-                return null;
-            }
-
-            return $this->cache[$key]['value'];
-        } elseif ($this->backend === 'redis' && $this->redisEnabled) {
-            // $val = $this->redis->get($key);
-            // return $val ? unserialize($val) : null;
+        if (empty($key)) {
+            throw new \InvalidArgumentException('Cache key cannot be empty');
         }
 
-        return null;
+        try {
+            if ($this->backend === 'memory') {
+                if (!isset($this->cache[$key])) {
+                    return null;
+                }
+
+                if ($this->cache[$key]['expires'] < time()) {
+                    unset($this->cache[$key]);
+                    return null;
+                }
+
+                return $this->cache[$key]['value'];
+            } elseif ($this->backend === 'file') {
+                if (!isset($this->cache[$key])) {
+                    return null;
+                }
+
+                if ($this->cache[$key]['expires'] < time()) {
+                    unset($this->cache[$key]);
+                    $this->saveFileCache();
+                    return null;
+                }
+
+                return $this->cache[$key]['value'];
+            } elseif ($this->backend === 'redis' && $this->redisEnabled && $this->redis) {
+                $value = $this->redis->get($key);
+                if ($value === false) {
+                    return null;
+                }
+                return unserialize($value);
+            }
+
+            return null;
+        } catch (\Throwable $e) {
+            if ($this->auditTrail) {
+                $this->auditTrail->log('cache_error', ['action' => 'get', 'key' => $key, 'error' => $e->getMessage()], null);
+            }
+            return null; // Graceful degradation
+        }
     }
 
     public function delete($key)
