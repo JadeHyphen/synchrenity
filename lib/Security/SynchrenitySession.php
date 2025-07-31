@@ -9,6 +9,9 @@ class SynchrenitySession
     protected $backend;
     protected $flashKey = '_synchrenity_flash';
     protected $store;
+    protected $redisClient = null;
+    protected $dbConnection = null;
+    protected $sessionId = null;
     protected $metaKey         = '_synchrenity_meta';
     protected $encryptionKey   = null;
     protected $idleTimeout     = 0;
@@ -145,11 +148,24 @@ class SynchrenitySession
             }
             $this->store = &$_SESSION;
         } elseif ($backend === 'redis') {
-            $this->store = new \ArrayObject();
-            // TODO: Implement Redis logic (use $options['redis'] for client)
+            if (isset($options['redis']) && $options['redis'] instanceof \Redis) {
+                $this->redisClient = $options['redis'];
+                $this->sessionId = $options['session_id'] ?? session_id() ?? uniqid('session_', true);
+                $this->store = new \ArrayObject();
+                $this->loadFromRedis();
+            } else {
+                throw new \InvalidArgumentException('Redis backend requires a Redis client instance in options[\'redis\']');
+            }
         } elseif ($backend === 'db') {
-            $this->store = new \ArrayObject();
-            // TODO: Implement DB logic (use $options['db'] for PDO/connection)
+            if (isset($options['db']) && $options['db'] instanceof \PDO) {
+                $this->dbConnection = $options['db'];
+                $this->sessionId = $options['session_id'] ?? session_id() ?? uniqid('session_', true);
+                $this->store = new \ArrayObject();
+                $this->createSessionTable();
+                $this->loadFromDatabase();
+            } else {
+                throw new \InvalidArgumentException('Database backend requires a PDO instance in options[\'db\']');
+            }
         }
 
         if (isset($options['encryption_key'])) {
@@ -217,6 +233,9 @@ class SynchrenitySession
             $this->expirations[$key] = time() + $ttl;
         }
         $this->auditTrail[] = ['event' => 'set','key' => $key,'value' => $value,'time' => time()];
+        
+        // Persist to backend storage
+        $this->persistToBackend();
     }
 
     public function forget($key)
@@ -232,6 +251,9 @@ class SynchrenitySession
         unset($this->store[$key]);
         unset($this->expirations[$key]);
         $this->auditTrail[] = ['event' => 'forget','key' => $key,'time' => time()];
+        
+        // Persist to backend storage
+        $this->persistToBackend();
     }
 
     public function flush()
@@ -242,6 +264,10 @@ class SynchrenitySession
 
         if ($this->backend === 'file') {
             session_unset();
+        } elseif ($this->backend === 'redis') {
+            $this->deleteFromRedis();
+        } elseif ($this->backend === 'db') {
+            $this->deleteFromDatabase();
         }
         $this->store       = [];
         $this->expirations = [];
@@ -430,6 +456,105 @@ class SynchrenitySession
                 'httponly' => true,
                 'samesite' => 'Lax',
             ]);
+        }
+    }
+
+    // Backend persistence helper
+    protected function persistToBackend()
+    {
+        if ($this->backend === 'redis') {
+            $this->saveToRedis();
+        } elseif ($this->backend === 'db') {
+            $this->saveToDatabase();
+        }
+        // File backend uses $_SESSION reference, so no explicit save needed
+    }
+
+    // Database backend helper methods
+    protected function createSessionTable()
+    {
+        if ($this->dbConnection) {
+            $sql = "CREATE TABLE IF NOT EXISTS synchrenity_sessions (
+                id VARCHAR(255) PRIMARY KEY,
+                data TEXT,
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+                expires_at TIMESTAMP NULL
+            )";
+            try {
+                $this->dbConnection->exec($sql);
+            } catch (\PDOException $e) {
+                // Table might already exist or different SQL dialect
+                error_log("Session table creation failed: " . $e->getMessage());
+            }
+        }
+    }
+
+    protected function loadFromDatabase()
+    {
+        if ($this->dbConnection && $this->sessionId) {
+            $stmt = $this->dbConnection->prepare("SELECT data FROM synchrenity_sessions WHERE id = ? AND (expires_at IS NULL OR expires_at > NOW())");
+            $stmt->execute([$this->sessionId]);
+            $row = $stmt->fetch(\PDO::FETCH_ASSOC);
+            if ($row && $row['data']) {
+                $sessionData = json_decode($row['data'], true);
+                if (is_array($sessionData)) {
+                    $this->store->exchangeArray($sessionData);
+                }
+            }
+        }
+    }
+
+    protected function saveToDatabase()
+    {
+        if ($this->dbConnection && $this->sessionId) {
+            $data = json_encode($this->store->getArrayCopy());
+            $expiresAt = $this->idleTimeout > 0 ? date('Y-m-d H:i:s', time() + $this->idleTimeout) : null;
+            
+            $stmt = $this->dbConnection->prepare("INSERT INTO synchrenity_sessions (id, data, expires_at) VALUES (?, ?, ?) 
+                                                 ON DUPLICATE KEY UPDATE data = VALUES(data), expires_at = VALUES(expires_at), updated_at = CURRENT_TIMESTAMP");
+            $stmt->execute([$this->sessionId, $data, $expiresAt]);
+        }
+    }
+
+    protected function deleteFromDatabase()
+    {
+        if ($this->dbConnection && $this->sessionId) {
+            $stmt = $this->dbConnection->prepare("DELETE FROM synchrenity_sessions WHERE id = ?");
+            $stmt->execute([$this->sessionId]);
+        }
+    }
+
+    // Redis backend helper methods
+    protected function loadFromRedis()
+    {
+        if ($this->redisClient && $this->sessionId) {
+            $key = 'session:' . $this->sessionId;
+            $data = $this->redisClient->get($key);
+            if ($data) {
+                $sessionData = json_decode($data, true);
+                if (is_array($sessionData)) {
+                    $this->store->exchangeArray($sessionData);
+                }
+            }
+        }
+    }
+
+    protected function saveToRedis()
+    {
+        if ($this->redisClient && $this->sessionId) {
+            $key = 'session:' . $this->sessionId;
+            $data = json_encode($this->store->getArrayCopy());
+            $ttl = $this->idleTimeout > 0 ? $this->idleTimeout : 3600; // Default 1 hour
+            $this->redisClient->setex($key, $ttl, $data);
+        }
+    }
+
+    protected function deleteFromRedis()
+    {
+        if ($this->redisClient && $this->sessionId) {
+            $key = 'session:' . $this->sessionId;
+            $this->redisClient->del($key);
         }
     }
 }
