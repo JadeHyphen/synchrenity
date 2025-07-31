@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Synchrenity\Support;
 
-use Psr\Container\ContainerInterface;
-
 /**
  * Class SynchrenityFacade
  *
@@ -15,9 +13,9 @@ use Psr\Container\ContainerInterface;
 abstract class SynchrenityFacade
 {
     /**
-     * @var ContainerInterface|null
+     * @var object|null Service container
      */
-    protected static ?ContainerInterface $container = null;
+    protected static ?object $container = null;
 
     /**
      * @var array<string, callable> Macros registered for this facade
@@ -39,9 +37,9 @@ abstract class SynchrenityFacade
 
     /**
      * Set the service container.
-     * @param ContainerInterface $container
+     * @param object $container
      */
-    public static function setContainer(ContainerInterface $container): void
+    public static function setContainer(object $container): void
     {
         static::$container = $container;
     }

@@ -129,7 +129,7 @@ class SynchrenitySession
     }
     public function checkQuota()
     {
-        return $this->quota > 0 ? strlen(serialize($this->store)) <= $this->quota : true;
+        return $this->quota > 0 ? strlen(json_encode($this->store)) <= $this->quota : true;
     }
 
     // Session health check
@@ -320,12 +320,41 @@ class SynchrenitySession
     // Session import/export
     public function export($file)
     {
-        file_put_contents($file, serialize([$this->store, $this->expirations]));
+        // Security: Validate file path
+        $realpath = realpath(dirname($file));
+        if ($realpath === false || strpos($realpath, realpath(sys_get_temp_dir())) !== 0) {
+            throw new \InvalidArgumentException('Invalid file path for session export');
+        }
+        
+        $data = json_encode([$this->store, $this->expirations], JSON_THROW_ON_ERROR);
+        if (file_put_contents($file, $data) === false) {
+            throw new \RuntimeException('Failed to write session export file');
+        }
     }
     public function import($file)
     {
         if (file_exists($file)) {
-            list($this->store, $this->expirations) = unserialize(file_get_contents($file));
+            // Security: Validate file path
+            $realpath = realpath($file);
+            if ($realpath === false || strpos($realpath, realpath(sys_get_temp_dir())) !== 0) {
+                throw new \InvalidArgumentException('Invalid file path for session import');
+            }
+            
+            $contents = file_get_contents($file);
+            if ($contents === false) {
+                throw new \RuntimeException('Failed to read session import file');
+            }
+            
+            $data = json_decode($contents, true);
+            if ($data === null && json_last_error() !== JSON_ERROR_NONE) {
+                throw new \InvalidArgumentException('Invalid JSON in session import file: ' . json_last_error_msg());
+            }
+            
+            if (!is_array($data) || count($data) !== 2) {
+                throw new \InvalidArgumentException('Invalid session import data format');
+            }
+            
+            list($this->store, $this->expirations) = $data;
         }
     }
 
@@ -401,7 +430,7 @@ class SynchrenitySession
             return $data;
         }
         $iv     = random_bytes(16);
-        $cipher = openssl_encrypt(serialize($data), 'AES-256-CBC', $this->encryptionKey, 0, $iv);
+        $cipher = openssl_encrypt(json_encode($data), 'AES-256-CBC', $this->encryptionKey, 0, $iv);
 
         return base64_encode($iv . $cipher);
     }
@@ -414,8 +443,16 @@ class SynchrenitySession
         $iv     = substr($raw, 0, 16);
         $cipher = substr($raw, 16);
         $plain  = openssl_decrypt($cipher, 'AES-256-CBC', $this->encryptionKey, 0, $iv);
+        if ($plain === false) {
+            throw new \RuntimeException('Failed to decrypt session data');
+        }
 
-        return unserialize($plain);
+        $result = json_decode($plain, true);
+        if ($result === null && json_last_error() !== JSON_ERROR_NONE) {
+            throw new \RuntimeException('Invalid JSON in session data: ' . json_last_error_msg());
+        }
+        
+        return $result;
     }
 
     // Session metadata
