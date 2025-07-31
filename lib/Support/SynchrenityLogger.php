@@ -5,13 +5,10 @@ declare(strict_types=1);
 
 namespace Synchrenity\Support;
 
-use Psr\Log\LoggerInterface;
-use Psr\Log\LogLevel;
-
 /**
  * SynchrenityLogger: Robust, multi-channel logger with audit integration
  */
-class SynchrenityLogger implements LoggerInterface
+class SynchrenityLogger
 {
     protected $channels       = [];
     protected $defaultChannel = 'app';
@@ -75,34 +72,34 @@ class SynchrenityLogger implements LoggerInterface
     // PSR-3 methods
     public function emergency(string|\Stringable $message, array $context = []): void
     {
-        $this->log(LogLevel::EMERGENCY, $message, $context);
+        $this->log('emergency', $message, $context);
     }
     public function alert(string|\Stringable $message, array $context = []): void
     {
-        $this->log(LogLevel::ALERT, $message, $context);
+        $this->log('alert', $message, $context);
     }
     public function critical(string|\Stringable $message, array $context = []): void
     {
-        $this->log(LogLevel::CRITICAL, $message, $context);
+        $this->log('critical', $message, $context);
     }
     public function error(string|\Stringable $message, array $context = []): void
     {
-        $this->log(LogLevel::ERROR, $message, $context);
+        $this->log('error', $message, $context);
     }
     public function warning(string|\Stringable $message, array $context = []): void
     {
-        $this->log(LogLevel::WARNING, $message, $context);
+        $this->log('warning', $message, $context);
     }
     public function notice(string|\Stringable $message, array $context = []): void
     {
-        $this->log(LogLevel::NOTICE, $message, $context);
+        $this->log('notice', $message, $context);
     }
     public function info(string|\Stringable $message, array $context = []): void
     {
-        $this->log(LogLevel::INFO, $message, $context);
+        $this->log('info', $message, $context);
     }
     public function debug(string|\Stringable $message, array $context = []): void
     {
-        $this->log(LogLevel::DEBUG, $message, $context);
+        $this->log('debug', $message, $context);
     }
 }

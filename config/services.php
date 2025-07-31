@@ -4,10 +4,9 @@ use Synchrenity\Support\SynchrenityServiceContainer;
 use Synchrenity\Auth\Auth;
 use Synchrenity\ORM\Atlas;
 use Synchrenity\RateLimit\SynchrenityRateLimiter;
-use Psr\Container\ContainerInterface;
 
 // --- Advanced Service Container: plugin/event/metrics/context/introspection, hot-reload, dynamic DI, robust UX ---
-class SynchrenityServiceContainerExt extends SynchrenityServiceContainer implements ContainerInterface {
+class SynchrenityServiceContainerExt extends SynchrenityServiceContainer {
     protected $plugins = [];
     protected $events = [];
     protected $metrics = [ 'gets' => 0, 'sets' => 0, 'reloads' => 0 ];

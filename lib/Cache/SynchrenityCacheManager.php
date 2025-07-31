@@ -87,7 +87,7 @@ class SynchrenityCacheManager
                 $this->cache[$key] = ['value' => $value, 'expires' => $expires];
                 $this->saveFileCache();
             } elseif ($this->backend === 'redis' && $this->redisEnabled && $this->redis) {
-                $this->redis->setex($key, $ttl, serialize($value));
+                $this->redis->setex($key, $ttl, json_encode($value));
             }
 
             if ($this->auditTrail) {
@@ -136,7 +136,7 @@ class SynchrenityCacheManager
                 if ($value === false) {
                     return null;
                 }
-                return unserialize($value);
+                return json_decode($value, true);
             }
 
             return null;

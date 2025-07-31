@@ -20,8 +20,6 @@ class Auth extends SynchrenityFacade
     protected static array $events  = [];
     /** @var array<string, int> Metrics for calls and errors */
     protected static array $metrics = [ 'calls' => 0, 'errors' => 0 ];
-    /** @var array Contextual data */
-    protected static array $context = [];
 
     protected static function getServiceName(): string
     {

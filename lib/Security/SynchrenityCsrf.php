@@ -450,17 +450,42 @@ class SynchrenityCsrf
     // Export/import
     public function export($file)
     {
-        file_put_contents($file, serialize([
+        // Security: Validate file path to prevent directory traversal
+        $realpath = realpath(dirname($file));
+        if ($realpath === false || strpos($realpath, realpath(sys_get_temp_dir())) !== 0) {
+            throw new \InvalidArgumentException('Invalid file path for CSRF export');
+        }
+        
+        $data = json_encode([
             'store'         => $this->store(),
             'usedTokens'    => $this->usedTokens,
             'revokedTokens' => $this->revokedTokens,
             'scopes'        => $this->scopes,
-        ]));
+        ], JSON_THROW_ON_ERROR);
+        
+        if (file_put_contents($file, $data) === false) {
+            throw new \RuntimeException('Failed to write CSRF export file');
+        }
     }
     public function import($file)
     {
         if (file_exists($file)) {
-            $data = unserialize(file_get_contents($file));
+            // Security: Validate file path to prevent directory traversal
+            $realpath = realpath($file);
+            if ($realpath === false || strpos($realpath, realpath(sys_get_temp_dir())) !== 0) {
+                throw new \InvalidArgumentException('Invalid file path for CSRF import');
+            }
+            
+            $contents = file_get_contents($file);
+            if ($contents === false) {
+                throw new \RuntimeException('Failed to read CSRF import file');
+            }
+            
+            // Security: Use JSON instead of unserialize to prevent code execution
+            $data = json_decode($contents, true);
+            if ($data === null && json_last_error() !== JSON_ERROR_NONE) {
+                throw new \InvalidArgumentException('Invalid JSON in CSRF import file: ' . json_last_error_msg());
+            }
 
             foreach ($data['store'] as $k => $v) {
                 $this->store()[$k] = $v;
