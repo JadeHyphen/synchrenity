@@ -10,11 +10,11 @@ class SynchrenityRateLimiter
 {
     // --- ADVANCED: AI/ML anomaly detection (optional, pluggable) ---
     protected $anomalyDetector = null;
-    public function setAnomalyDetector(callable $detector)
+    public function setAnomalyDetector(callable $detector): void
     {
         $this->anomalyDetector = $detector;
     }
-    protected function detectAnomaly($user, $action, $meta = [])
+    protected function detectAnomaly(string $user, string $action, array $meta = []): bool
     {
         if ($this->anomalyDetector) {
             return call_user_func($this->anomalyDetector, $user, $action, $meta, $this);
@@ -25,11 +25,11 @@ class SynchrenityRateLimiter
 
     // --- ADVANCED: Distributed token bucket (multi-node, Redis/DB/Custom) ---
     protected $distributedTokenBucket = null;
-    public function setDistributedTokenBucket($bucket)
+    public function setDistributedTokenBucket($bucket): void
     {
         $this->distributedTokenBucket = $bucket;
     }
-    protected function useDistributedToken($user, $action, $tokens = 1)
+    protected function useDistributedToken(string $user, string $action, int $tokens = 1): bool
     {
         if ($this->distributedTokenBucket) {
             return $this->distributedTokenBucket->consume($user, $action, $tokens);
@@ -39,12 +39,12 @@ class SynchrenityRateLimiter
     }
 
     // --- ADVANCED: Per-user behavioral fingerprinting ---
-    protected $fingerprints = [];
-    public function setUserFingerprint($user, $fingerprint)
+    protected array $fingerprints = [];
+    public function setUserFingerprint(string $user, array $fingerprint): void
     {
         $this->fingerprints[$user] = $fingerprint;
     }
-    public function getUserFingerprint($user)
+    public function getUserFingerprint(string $user): ?array
     {
         return $this->fingerprints[$user] ?? null;
     }

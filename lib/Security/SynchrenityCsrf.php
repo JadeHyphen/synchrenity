@@ -6,42 +6,42 @@ namespace Synchrenity\Security;
 
 class SynchrenityCsrf
 {
-    protected $sessionKey        = '_synchrenity_csrf';
-    protected $bindIp            = false;
-    protected $bindUa            = false;
-    protected $scopes            = [];
-    protected $replayProtection  = true;
-    protected $usedTokens        = [];
-    protected $formTokensKey     = '_synchrenity_csrf_forms';
-    protected $multiTokenPerForm = false;
-    protected $tokenMeta         = [];
-    protected $hashAlgo          = 'sha256';
-    protected $userKey           = null;
-    protected $rotationHooks     = [];
-    protected $log               = [];
-    protected $complianceMode    = false;
+    protected string $sessionKey        = '_synchrenity_csrf';
+    protected bool $bindIp            = false;
+    protected bool $bindUa            = false;
+    protected array $scopes            = [];
+    protected bool $replayProtection  = true;
+    protected array $usedTokens        = [];
+    protected string $formTokensKey     = '_synchrenity_csrf_forms';
+    protected bool $multiTokenPerForm = false;
+    protected array $tokenMeta         = [];
+    protected string $hashAlgo          = 'sha256';
+    protected ?string $userKey           = null;
+    protected array $rotationHooks     = [];
+    protected array $log               = [];
+    protected bool $complianceMode    = false;
     protected $externalVerifier  = null;
-    protected $tokenTtl          = 1800; // 30 min
-    protected $backend           = 'session';
-    protected $eventHooks        = [ 'generate' => [], 'validate' => [], 'rotate' => [], 'fail' => [] ];
-    protected $auditTrail        = [];
-    protected $lastError         = null;
-    protected $oneTimeTokensKey  = '_synchrenity_csrf_ott';
-    protected $tokenUsageLimit   = 1;
-    protected $tokenUsageCounts  = [];
-    protected $revokedTokens     = [];
-    protected $stats             = [ 'generates' => 0, 'validates' => 0, 'fails' => 0, 'rotates' => 0 ];
-    protected $arrayStore        = [];
+    protected int $tokenTtl          = 1800; // 30 min
+    protected string $backend           = 'session';
+    protected array $eventHooks        = [ 'generate' => [], 'validate' => [], 'rotate' => [], 'fail' => [] ];
+    protected array $auditTrail        = [];
+    protected ?string $lastError         = null;
+    protected string $oneTimeTokensKey  = '_synchrenity_csrf_ott';
+    protected int $tokenUsageLimit   = 1;
+    protected array $tokenUsageCounts  = [];
+    protected array $revokedTokens     = [];
+    protected array $stats             = [ 'generates' => 0, 'validates' => 0, 'fails' => 0, 'rotates' => 0 ];
+    protected array $arrayStore        = [];
     protected $policy            = null;
 
     // Event hooks
-    public function on($event, $cb)
+    public function on(string $event, callable $cb): void
     {
         if (isset($this->eventHooks[$event])) {
             $this->eventHooks[$event][] = $cb;
         }
     }
-    protected function trigger($event, ...$args)
+    protected function trigger(string $event, ...$args): void
     {
         if (isset($this->eventHooks[$event])) {
             foreach ($this->eventHooks[$event] as $cb) {

@@ -6,28 +6,32 @@ namespace Synchrenity\Auth;
 
 class SynchrenityRBAC
 {
-    protected $userRoles       = [];
-    protected $rolePermissions = [];
-    protected $roleHierarchy   = [];
+    protected array $userRoles       = [];
+    protected array $rolePermissions = [];
+    protected array $roleHierarchy   = [];
     protected $auditTrail;
-    protected $plugins = [];
-    protected $events  = [];
-    protected $metrics = [
+    protected array $plugins = [];
+    protected array $events  = [];
+    protected array $metrics = [
         'checks' => 0,
         'grants' => 0,
         'denies' => 0,
         'errors' => 0,
     ];
-    protected $context = [];
+    protected array $context = [];
 
-    public function setAuditTrail($auditTrail)
+    public function setAuditTrail($auditTrail): void
     {
         $this->auditTrail = $auditTrail;
     }
 
     // Assign a role to a user
-    public function assignRole($userId, $role)
+    public function assignRole($userId, string $role): void
     {
+        if (empty($role)) {
+            throw new \InvalidArgumentException('Role cannot be empty');
+        }
+
         if (!isset($this->userRoles[$userId])) {
             $this->userRoles[$userId] = [];
         }
@@ -46,7 +50,7 @@ class SynchrenityRBAC
     }
 
     // Remove a role from a user
-    public function removeRole($userId, $role)
+    public function removeRole($userId, string $role): void
     {
         if (isset($this->userRoles[$userId])) {
             $idx = array_search($role, $this->userRoles[$userId]);
