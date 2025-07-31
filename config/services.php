@@ -38,8 +38,31 @@ $synchrenityContainer->register('auth', function($container) {
 });
 $synchrenityContainer->register('atlas', function($container) {
     // Use the SynchrenityAtlas class from the correct namespace
-    // You may want to pass a PDO connection or config here
-    $pdo = null; // TODO: Replace with your PDO instance or DSN string
+    // Get PDO configuration from environment or config
+    $config = [
+        'host' => $_ENV['DB_HOST'] ?? 'localhost',
+        'dbname' => $_ENV['DB_NAME'] ?? 'synchrenity',
+        'username' => $_ENV['DB_USERNAME'] ?? 'root',
+        'password' => $_ENV['DB_PASSWORD'] ?? '',
+        'charset' => $_ENV['DB_CHARSET'] ?? 'utf8mb4'
+    ];
+    
+    try {
+        $dsn = "mysql:host={$config['host']};dbname={$config['dbname']};charset={$config['charset']}";
+        $pdo = new \PDO($dsn, $config['username'], $config['password'], [
+            \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+            \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC,
+            \PDO::ATTR_EMULATE_PREPARES => false
+        ]);
+    } catch (\PDOException $e) {
+        // Fallback to SQLite for development if MySQL fails
+        $pdo = new \PDO('sqlite::memory:', null, null, [
+            \PDO::ATTR_ERRMODE => \PDO::ERRMODE_EXCEPTION,
+            \PDO::ATTR_DEFAULT_FETCH_MODE => \PDO::FETCH_ASSOC
+        ]);
+        error_log("MySQL connection failed, using SQLite fallback: " . $e->getMessage());
+    }
+    
     return new \Synchrenity\Atlas\SynchrenityAtlas($pdo);
 });
 $synchrenityContainer->singleton('policy', function() {

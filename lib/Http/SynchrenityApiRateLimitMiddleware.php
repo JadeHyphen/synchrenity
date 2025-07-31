@@ -8,14 +8,14 @@ class SynchrenityApiRateLimitMiddleware
 {
     protected $rateLimiter;
     protected $roleResolver;
-    protected $plugins = [];
-    protected $events  = [];
-    protected $metrics = [
+    protected array $plugins = [];
+    protected array $events  = [];
+    protected array $metrics = [
         'allowed' => 0,
         'blocked' => 0,
         'error'   => 0,
     ];
-    protected $context = [];
+    protected array $context = [];
     protected $policyResolver;
 
     public function __construct($rateLimiter, ?callable $roleResolver = null, ?callable $policyResolver = null)
@@ -25,19 +25,20 @@ class SynchrenityApiRateLimitMiddleware
         $this->policyResolver = $policyResolver;
     }
 
-    public function handle($request, $next)
+    public function handle($request, callable $next)
     {
-        $endpoint = $request->getMethod() . ':' . $request->getPath();
-        $user     = $request->getUserId() ?? $request->getIp() ?? 'guest';
-        $role     = $this->roleResolver ? call_user_func($this->roleResolver, $request) : 'user';
-        $policy   = $this->policyResolver ? call_user_func($this->policyResolver, $request, $user, $role, $endpoint) : null;
-        $context  = [
-            'user'     => $user,
-            'role'     => $role,
-            'endpoint' => $endpoint,
-            'ip'       => method_exists($request, 'getIp') ? $request->getIp() : null,
-            'policy'   => $policy,
-        ];
+        try {
+            $endpoint = $request->getMethod() . ':' . $request->getPath();
+            $user     = $request->getUserId() ?? $request->getIp() ?? 'guest';
+            $role     = $this->roleResolver ? call_user_func($this->roleResolver, $request) : 'user';
+            $policy   = $this->policyResolver ? call_user_func($this->policyResolver, $request, $user, $role, $endpoint) : null;
+            $context  = [
+                'user'     => $user,
+                'role'     => $role,
+                'endpoint' => $endpoint,
+                'ip'       => method_exists($request, 'getIp') ? $request->getIp() : null,
+                'policy'   => $policy,
+            ];
         $this->context = $context;
         $allowed       = false;
         $error         = null;
@@ -84,6 +85,10 @@ class SynchrenityApiRateLimitMiddleware
         $this->setRateLimitHeaders($response, $user, $role, $endpoint, $policy);
 
         return $response;
+        } catch (\Throwable $e) {
+            $this->metrics['error']++;
+            return new \Synchrenity\Http\SynchrenityResponse('Middleware error: ' . $e->getMessage(), 500);
+        }
     }
 
     protected function setRateLimitHeaders($response, $user, $role, $endpoint, $policy)

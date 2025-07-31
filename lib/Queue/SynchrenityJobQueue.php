@@ -322,7 +322,81 @@ class SynchrenityJobQueue
             return (time() - $lastRun) >= (int)$cronExpr;
         }
 
-        // TODO: Add full cron parser if needed
+        // Full cron expression parser (standard format: minute hour day month day-of-week)
+        if (preg_match('/^(\*|[0-5]?\d)\s+(\*|[01]?\d|2[0-3])\s+(\*|[0-2]?\d|3[01])\s+(\*|[01]?\d)\s+(\*|[0-6])$/', $cronExpr)) {
+            return $this->parseCronExpression($cronExpr, $lastRun);
+        }
+
+        return false;
+    }
+
+    protected function parseCronExpression($cronExpr, $lastRun)
+    {
+        $parts = explode(' ', $cronExpr);
+        if (count($parts) !== 5) {
+            return false;
+        }
+
+        [$minute, $hour, $day, $month, $dayOfWeek] = $parts;
+        $now = time();
+        $currentMinute = (int)date('i', $now);
+        $currentHour = (int)date('G', $now);
+        $currentDay = (int)date('j', $now);
+        $currentMonth = (int)date('n', $now);
+        $currentDayOfWeek = (int)date('w', $now);
+
+        // Check if enough time has passed (at least 1 minute)
+        if ($now - $lastRun < 60) {
+            return false;
+        }
+
+        // Parse each field
+        if (!$this->matchesCronField($minute, $currentMinute, 0, 59)) return false;
+        if (!$this->matchesCronField($hour, $currentHour, 0, 23)) return false;
+        if (!$this->matchesCronField($day, $currentDay, 1, 31)) return false;
+        if (!$this->matchesCronField($month, $currentMonth, 1, 12)) return false;
+        if (!$this->matchesCronField($dayOfWeek, $currentDayOfWeek, 0, 6)) return false;
+
+        return true;
+    }
+
+    protected function matchesCronField($field, $value, $min, $max)
+    {
+        // Wildcard
+        if ($field === '*') {
+            return true;
+        }
+
+        // Single number
+        if (is_numeric($field)) {
+            return (int)$field === $value;
+        }
+
+        // Range (e.g., "1-5")
+        if (strpos($field, '-') !== false) {
+            [$start, $end] = explode('-', $field, 2);
+            return $value >= (int)$start && $value <= (int)$end;
+        }
+
+        // List (e.g., "1,3,5")
+        if (strpos($field, ',') !== false) {
+            $values = array_map('intval', explode(',', $field));
+            return in_array($value, $values);
+        }
+
+        // Step values (e.g., "*/5" or "0-23/2")
+        if (strpos($field, '/') !== false) {
+            [$range, $step] = explode('/', $field, 2);
+            $step = (int)$step;
+            
+            if ($range === '*') {
+                return ($value - $min) % $step === 0;
+            } elseif (strpos($range, '-') !== false) {
+                [$start, $end] = explode('-', $range, 2);
+                return $value >= (int)$start && $value <= (int)$end && ($value - (int)$start) % $step === 0;
+            }
+        }
+
         return false;
     }
 

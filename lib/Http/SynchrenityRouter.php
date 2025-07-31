@@ -10,32 +10,40 @@ namespace Synchrenity\Http;
 
 class SynchrenityRouter
 {
-    protected $routes           = [];
-    protected $namedRoutes      = [];
-    protected $globalMiddleware = [];
-    protected $constraints      = [];
+    protected array $routes           = [];
+    protected array $namedRoutes      = [];
+    protected array $globalMiddleware = [];
+    protected array $constraints      = [];
     protected $fallbackHandler  = null;
-    protected $redirects        = [];
-    protected $subdomainRoutes  = [];
-    protected $routeCache       = [];
+    protected array $redirects        = [];
+    protected array $subdomainRoutes  = [];
+    protected array $routeCache       = [];
     protected $eventManager;
-    protected $rateLimiters = [];
-    protected $priorities   = [];
-    protected $versions     = [];
+    protected array $rateLimiters = [];
+    protected array $priorities   = [];
+    protected array $versions     = [];
     // Advanced
-    protected $routeTags    = [];
-    protected $routeHealth  = [];
-    protected $routeMetrics = [];
-    protected $plugins      = [];
-    protected $routeEvents  = [];
+    protected array $routeTags    = [];
+    protected array $routeHealth  = [];
+    protected array $routeMetrics = [];
+    protected array $plugins      = [];
+    protected array $routeEvents  = [];
 
     public function __construct($eventManager = null)
     {
         $this->eventManager = $eventManager;
     }
 
-    public function add($method, $path, $handler, $middleware = [], $name = null, $constraints = [], $tags = [], $health = 'healthy', $deprecated = false)
+    public function add(string $method, string $path, $handler, array $middleware = [], ?string $name = null, array $constraints = [], array $tags = [], string $health = 'healthy', bool $deprecated = false): void
     {
+        if (empty($method) || empty($path)) {
+            throw new \InvalidArgumentException('Method and path cannot be empty');
+        }
+
+        if (!is_callable($handler) && !is_array($handler) && !is_string($handler)) {
+            throw new \InvalidArgumentException('Handler must be callable, array, or string');
+        }
+
         $route = [
             'method'      => strtoupper($method),
             'path'        => $path,

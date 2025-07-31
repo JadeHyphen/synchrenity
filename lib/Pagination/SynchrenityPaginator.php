@@ -15,12 +15,12 @@ class SynchrenityPaginator
     protected $prevCursor = null;
 
     // --- ADVANCED: Event hooks ---
-    protected $hooks = [];
-    public function addHook($event, callable $cb)
+    protected array $hooks = [];
+    public function addHook(string $event, callable $cb): void
     {
         $this->hooks[$event][] = $cb;
     }
-    protected function triggerHook($event)
+    protected function triggerHook(string $event): void
     {
         foreach ($this->hooks[$event] ?? [] as $cb) {
             call_user_func($cb, $this);
@@ -29,22 +29,22 @@ class SynchrenityPaginator
 
     // --- ADVANCED: Access control ---
     protected $accessCallback = null;
-    public function setAccessCallback(callable $cb)
+    public function setAccessCallback(callable $cb): void
     {
         $this->accessCallback = $cb;
     }
-    protected function checkAccess($item)
+    protected function checkAccess($item): bool
     {
         return $this->accessCallback ? call_user_func($this->accessCallback, $item) : true;
     }
 
     // --- ADVANCED: Caching (pluggable) ---
     protected $cache = null;
-    public function setCache($cache)
+    public function setCache($cache): void
     {
         $this->cache = $cache;
     }
-    protected function cacheGet($key)
+    protected function cacheGet(string $key)
     {
         return $this->cache ? $this->cache->get($key) : null;
     }

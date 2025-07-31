@@ -6,46 +6,50 @@ namespace Synchrenity\Auth;
 
 class SynchrenityOAuth2Provider
 {
-    protected $providers = [];
+    protected array $providers = [];
     protected $auditTrail;
-    protected $hooks      = [];
-    protected $stateStore = [];
-    protected $plugins    = [];
-    protected $events     = [];
-    protected $metrics    = [
+    protected array $hooks      = [];
+    protected array $stateStore = [];
+    protected array $plugins    = [];
+    protected array $events     = [];
+    protected array $metrics    = [
         'auth_requests' => 0,
         'callbacks'     => 0,
         'errors'        => 0,
         'refreshes'     => 0,
         'userinfo'      => 0,
     ];
-    protected $context = [];
+    protected array $context = [];
 
-    public function __construct($providers = [])
+    public function __construct(array $providers = [])
     {
         foreach ($providers as $name => $config) {
             $this->addProvider($name, $config);
         }
     }
 
-    public function setAuditTrail($auditTrail)
+    public function setAuditTrail($auditTrail): void
     {
         $this->auditTrail = $auditTrail;
     }
 
-    public function addHook(callable $hook)
+    public function addHook(callable $hook): void
     {
         $this->hooks[] = $hook;
     }
 
-    public function addProvider($name, $config)
+    public function addProvider(string $name, array $config): void
     {
+        if (empty($name)) {
+            throw new \InvalidArgumentException('Provider name cannot be empty');
+        }
+
         // Validate required config keys
         $required = ['auth_url','token_url','client_id','client_secret','redirect_uri'];
 
         foreach ($required as $key) {
-            if (!isset($config[$key])) {
-                throw new \InvalidArgumentException("Missing $key in provider config");
+            if (!isset($config[$key]) || empty($config[$key])) {
+                throw new \InvalidArgumentException("Missing or empty $key in provider config");
             }
         }
         $this->providers[$name] = $config;

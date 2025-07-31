@@ -9,88 +9,94 @@ namespace Synchrenity;
  */
 abstract class SynchrenityCommand
 {
-    protected $name        = '';
-    protected $description = '';
+    protected string $name        = '';
+    protected string $description = '';
     protected $kernel;
-    protected $arguments = [];
-    protected $options   = [];
-    protected $flags     = [];
-    protected $group     = null;
-    protected $aliases   = [];
-    protected $hooks     = [];
+    protected array $arguments = [];
+    protected array $options   = [];
+    protected array $flags     = [];
+    protected ?string $group     = null;
+    protected array $aliases   = [];
+    protected array $hooks     = [];
 
     public function __construct($kernel = null)
     {
         $this->kernel = $kernel;
     }
 
-    public function getName()
+    public function getName(): string
     {
         return $this->name;
     }
-    public function getDescription()
+    public function getDescription(): string
     {
         return $this->description;
     }
-    public function getArguments()
+    public function getArguments(): array
     {
         return $this->arguments;
     }
-    public function getOptions()
+    public function getOptions(): array
     {
         return $this->options;
     }
-    public function getFlags()
+    public function getFlags(): array
     {
         return $this->flags;
     }
-    public function getGroup()
+    public function getGroup(): ?string
     {
         return $this->group;
     }
-    public function getAliases()
+    public function getAliases(): array
     {
         return $this->aliases;
     }
 
-    public function addArgument($name, $desc = '', $required = false)
+    public function addArgument(string $name, string $desc = '', bool $required = false): self
     {
+        if (empty($name)) {
+            throw new \InvalidArgumentException('Argument name cannot be empty');
+        }
         $this->arguments[$name] = ['desc' => $desc,'required' => $required];
-
         return $this;
     }
-    public function addOption($name, $desc = '', $default = null)
+    public function addOption(string $name, string $desc = '', $default = null): self
     {
+        if (empty($name)) {
+            throw new \InvalidArgumentException('Option name cannot be empty');
+        }
         $this->options[$name] = ['desc' => $desc,'default' => $default];
-
         return $this;
     }
-    public function addFlag($name, $desc = '')
+    public function addFlag(string $name, string $desc = ''): self
     {
+        if (empty($name)) {
+            throw new \InvalidArgumentException('Flag name cannot be empty');
+        }
         $this->flags[$name] = ['desc' => $desc];
-
         return $this;
     }
-    public function setGroup($group)
+    public function setGroup(string $group): self
     {
         $this->group = $group;
-
         return $this;
     }
-    public function addAlias($alias)
+    public function addAlias(string $alias): self
     {
+        if (empty($alias)) {
+            throw new \InvalidArgumentException('Alias cannot be empty');
+        }
         $this->aliases[] = $alias;
-
         return $this;
     }
 
-    public function addHook($event, callable $cb)
+    public function addHook(string $event, callable $cb): self
     {
         $this->hooks[$event][] = $cb;
-
         return $this;
     }
-    protected function triggerHook($event, ...$args)
+    protected function triggerHook(string $event, ...$args): void
     {
         foreach ($this->hooks[$event] ?? [] as $cb) {
             call_user_func_array($cb, $args);

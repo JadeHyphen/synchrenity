@@ -11,27 +11,38 @@ class SynchrenityCore
      */
     public $logger;
 
+    /**
+     * Application configuration
+     */
+    protected array $config = [];
+
+    /**
+     * Environment variables
+     */
+    protected array $env = [];
+
     // --- ADVANCED: Metrics/observability ---
     protected $metrics = [];
-    public function recordMetric($name, $value, $tags = [])
+    public function recordMetric(string $name, $value, array $tags = []): void
     {
         $this->metrics[] = ['name' => $name,'value' => $value,'tags' => $tags,'time' => time()];
     }
-    public function getMetrics()
+    public function getMetrics(): array
     {
         return $this->metrics;
     }
 
-    public function log($level, $msg, $context = [])
+    public function log(string $level, string $msg, array $context = []): void
     {
         if ($this->logger) {
-            return $this->logger->log($level, $msg, $context);
+            $this->logger->log($level, $msg, $context);
+        } else {
+            error_log("[$level] $msg " . json_encode($context));
         }
-        error_log("[$level] $msg " . json_encode($context));
     }
     // --- ADVANCED: Middleware pipeline ---
     protected $middleware = [];
-    public function addMiddleware($mw)
+    public function addMiddleware($mw): void
     {
         $this->middleware[] = $mw;
     }
@@ -53,51 +64,72 @@ class SynchrenityCore
     }
 
     // --- ADVANCED: Health/readiness/liveness checks ---
-    public function health()
+    public function health(): array
     {
         return ['status' => 'ok','uptime' => time() - ($_SERVER['REQUEST_TIME'] ?? time())];
     }
-    public function readiness()
+    public function readiness(): array
     {
         return ['ready' => true];
     }
-    public function liveness()
+    public function liveness(): array
     {
         return ['alive' => true];
     }
 
     // --- ADVANCED: Hot reload/config reload ---
-    public function reloadConfig(array $config = [])
+    public function reloadConfig(array $config = []): void
     {
         if (!empty($config)) {
             $this->config = $config;
         } elseif (file_exists('config/config.php')) {
-            $this->config = include 'config/config.php';
+            try {
+                $this->config = include 'config/config.php';
+                if (!is_array($this->config)) {
+                    throw new \RuntimeException('Config file must return an array');
+                }
+            } catch (\Throwable $e) {
+                $this->log('error', 'Failed to reload config: ' . $e->getMessage());
+                throw $e;
+            }
+        } else {
+            throw new \RuntimeException('Config file not found: config/config.php');
         }
     }
-    public function reloadEnv(array $env = [])
+    public function reloadEnv(array $env = []): void
     {
         if (!empty($env)) {
             $this->env = $env;
         } elseif (file_exists('.env')) {
-            $this->env = parse_ini_file('.env');
+            try {
+                $parsedEnv = parse_ini_file('.env');
+                if ($parsedEnv === false) {
+                    throw new \RuntimeException('Failed to parse .env file');
+                }
+                $this->env = $parsedEnv;
+            } catch (\Throwable $e) {
+                $this->log('error', 'Failed to reload environment: ' . $e->getMessage());
+                throw $e;
+            }
+        } else {
+            throw new \RuntimeException('Environment file not found: .env');
         }
     }
 
     // --- ADVANCED: Graceful shutdown (signal handling) ---
     protected $shutdownHandlers = [];
-    public function onShutdown(callable $cb)
+    public function onShutdown(callable $cb): void
     {
         $this->shutdownHandlers[] = $cb;
     }
-    public function handleSignals()
+    public function handleSignals(): void
     {
         if (function_exists('pcntl_signal')) {
             pcntl_signal(SIGTERM, [$this, 'shutdown']);
             pcntl_signal(SIGINT, [$this, 'shutdown']);
         }
     }
-    public function shutdown()
+    public function shutdown(): void
     {
         $this->runLifecycleHook('shutdown');
 
@@ -108,43 +140,75 @@ class SynchrenityCore
 
     // --- ADVANCED: Secrets management ---
     protected $secrets = [];
-    public function loadSecrets($source = null)
+    public function loadSecrets($source = null): void
     {
         if ($source && is_array($source)) {
             $this->secrets = $source;
         } elseif (file_exists('secrets.php')) {
-            $this->secrets = include 'secrets.php';
+            try {
+                $secrets = include 'secrets.php';
+                if (!is_array($secrets)) {
+                    throw new \RuntimeException('Secrets file must return an array');
+                }
+                $this->secrets = $secrets;
+            } catch (\Throwable $e) {
+                $this->log('error', 'Failed to load secrets: ' . $e->getMessage());
+                throw $e;
+            }
         } elseif (file_exists('.secrets.env')) {
-            $this->secrets = parse_ini_file('.secrets.env');
+            try {
+                $secrets = parse_ini_file('.secrets.env');
+                if ($secrets === false) {
+                    throw new \RuntimeException('Failed to parse .secrets.env file');
+                }
+                $this->secrets = $secrets;
+            } catch (\Throwable $e) {
+                $this->log('error', 'Failed to load secrets from .env: ' . $e->getMessage());
+                throw $e;
+            }
         }
     }
-    public function secret($key, $default = null)
+    public function secret(string $key, $default = null)
     {
         return $this->secrets[$key] ?? $default;
     }
 
     // --- ADVANCED: Async event bus ---
     protected $eventQueue = [];
-    public function queueEvent($event, ...$args)
+    public function queueEvent(string $event, ...$args): void
     {
         $this->eventQueue[] = [$event, $args];
     }
-    public function processEventQueue()
+    public function processEventQueue(): void
     {
         while ($evt = array_shift($this->eventQueue)) {
-            $this->dispatch($evt[0], ...$evt[1]);
+            try {
+                $this->dispatch($evt[0], ...$evt[1]);
+            } catch (\Throwable $e) {
+                $this->log('error', 'Event processing failed: ' . $e->getMessage());
+            }
         }
     }
 
     // --- ADVANCED: Plugin/extension loader ---
-    public function loadPlugin($file)
+    public function loadPlugin(string $file): void
     {
-        if (file_exists($file)) {
+        if (!file_exists($file)) {
+            throw new \RuntimeException("Plugin file not found: $file");
+        }
+
+        try {
             $plugin = include $file;
 
             if (is_object($plugin) && method_exists($plugin, 'register')) {
                 $plugin->register($this);
+                $this->log('info', "Plugin loaded successfully: $file");
+            } else {
+                throw new \RuntimeException("Invalid plugin format in $file - must return object with register() method");
             }
+        } catch (\Throwable $e) {
+            $this->log('error', "Failed to load plugin $file: " . $e->getMessage());
+            throw $e;
         }
     }
     public function unloadPlugin($name)
@@ -222,20 +286,6 @@ class SynchrenityCore
             'config'    => $this->config,
         ];
     }
-    /**
-     * Stores application configuration
-     *
-     * @var array
-     */
-    protected $config;
-
-    /**
-     * Stores loaded environment variables
-     *
-     * @var array
-     */
-    protected $env;
-
     /**
      * Registered service providers
      *
