@@ -447,53 +447,93 @@ class SynchrenityCsrf
         }
     }
 
-    // Export/import
+    // Export/import with enhanced security
     public function export($file)
     {
         // Security: Validate file path to prevent directory traversal
-        $realpath = realpath(dirname($file));
-        if ($realpath === false || strpos($realpath, realpath(sys_get_temp_dir())) !== 0) {
-            throw new \InvalidArgumentException('Invalid file path for CSRF export');
+        $file = realpath(dirname($file)) . DIRECTORY_SEPARATOR . basename($file);
+        $allowedDir = realpath(sys_get_temp_dir());
+        
+        if ($allowedDir === false || strpos(realpath(dirname($file)), $allowedDir) !== 0) {
+            throw new \InvalidArgumentException('Invalid file path for CSRF export - must be in temp directory');
         }
         
-        $data = json_encode([
-            'store'         => $this->store(),
-            'usedTokens'    => $this->usedTokens,
-            'revokedTokens' => $this->revokedTokens,
-            'scopes'        => $this->scopes,
-        ], JSON_THROW_ON_ERROR);
+        // Validate file extension
+        $ext = pathinfo($file, PATHINFO_EXTENSION);
+        if (!in_array($ext, ['json', 'tmp'], true)) {
+            throw new \InvalidArgumentException('Invalid file extension for CSRF export');
+        }
         
-        if (file_put_contents($file, $data) === false) {
+        $data = [
+            'version' => '1.0',
+            'timestamp' => time(),
+            'store' => $this->store(),
+            'usedTokens' => $this->usedTokens,
+            'revokedTokens' => $this->revokedTokens,
+            'scopes' => $this->scopes,
+        ];
+        
+        $jsonData = json_encode($data, JSON_THROW_ON_ERROR | JSON_UNESCAPED_SLASHES);
+        
+        if (file_put_contents($file, $jsonData, LOCK_EX) === false) {
             throw new \RuntimeException('Failed to write CSRF export file');
         }
     }
+    
     public function import($file)
     {
-        if (file_exists($file)) {
-            // Security: Validate file path to prevent directory traversal
-            $realpath = realpath($file);
-            if ($realpath === false || strpos($realpath, realpath(sys_get_temp_dir())) !== 0) {
-                throw new \InvalidArgumentException('Invalid file path for CSRF import');
-            }
-            
-            $contents = file_get_contents($file);
-            if ($contents === false) {
-                throw new \RuntimeException('Failed to read CSRF import file');
-            }
-            
-            // Security: Use JSON instead of unserialize to prevent code execution
-            $data = json_decode($contents, true);
-            if ($data === null && json_last_error() !== JSON_ERROR_NONE) {
-                throw new \InvalidArgumentException('Invalid JSON in CSRF import file: ' . json_last_error_msg());
-            }
-
-            foreach ($data['store'] as $k => $v) {
-                $this->store()[$k] = $v;
-            }
-            $this->usedTokens    = $data['usedTokens']    ?? [];
-            $this->revokedTokens = $data['revokedTokens'] ?? [];
-            $this->scopes        = $data['scopes']        ?? [];
+        // Security: Validate file exists and path
+        if (!file_exists($file)) {
+            throw new \InvalidArgumentException('CSRF import file does not exist');
         }
+        
+        $realpath = realpath($file);
+        $allowedDir = realpath(sys_get_temp_dir());
+        
+        if ($realpath === false || $allowedDir === false || strpos($realpath, $allowedDir) !== 0) {
+            throw new \InvalidArgumentException('Invalid file path for CSRF import - must be in temp directory');
+        }
+        
+        // Validate file extension
+        $ext = pathinfo($file, PATHINFO_EXTENSION);
+        if (!in_array($ext, ['json', 'tmp'], true)) {
+            throw new \InvalidArgumentException('Invalid file extension for CSRF import');
+        }
+        
+        // Check file size (prevent memory exhaustion)
+        $fileSize = filesize($file);
+        if ($fileSize === false || $fileSize > 1024 * 1024) { // 1MB limit
+            throw new \InvalidArgumentException('CSRF import file too large or unreadable');
+        }
+        
+        $contents = file_get_contents($file);
+        if ($contents === false) {
+            throw new \RuntimeException('Failed to read CSRF import file');
+        }
+        
+        // Security: Use JSON instead of unserialize to prevent code execution
+        $data = json_decode($contents, true);
+        if ($data === null && json_last_error() !== JSON_ERROR_NONE) {
+            throw new \InvalidArgumentException('Invalid JSON in CSRF import file: ' . json_last_error_msg());
+        }
+        
+        // Validate data structure
+        if (!is_array($data) || !isset($data['version'])) {
+            throw new \InvalidArgumentException('Invalid CSRF import data format');
+        }
+        
+        // Import data safely
+        if (isset($data['store']) && is_array($data['store'])) {
+            foreach ($data['store'] as $k => $v) {
+                if (is_string($k) && (is_string($v) || is_int($v) || is_array($v))) {
+                    $this->store()[$k] = $v;
+                }
+            }
+        }
+        
+        $this->usedTokens = isset($data['usedTokens']) && is_array($data['usedTokens']) ? $data['usedTokens'] : [];
+        $this->revokedTokens = isset($data['revokedTokens']) && is_array($data['revokedTokens']) ? $data['revokedTokens'] : [];
+        $this->scopes = isset($data['scopes']) && is_array($data['scopes']) ? $data['scopes'] : [];
     }
 
     // Event replay
@@ -509,10 +549,32 @@ class SynchrenityCsrf
     {
         return is_array($this->stats) && isset($this->stats['generates']);
     }
-    // Token entropy check
+    // Token entropy check with improved validation
     protected function isStrong($token)
     {
-        return strlen($token) >= 32 && preg_match('/[a-f0-9]{32,}/', $token);
+        // Check minimum length
+        if (strlen($token) < 64) { // 32 bytes = 64 hex chars
+            return false;
+        }
+        
+        // Check if it's valid hex
+        if (!preg_match('/^[a-f0-9]+$/', $token)) {
+            return false;
+        }
+        
+        // Check for sufficient entropy (no repeated patterns)
+        if (preg_match('/(.{4,})\1{2,}/', $token)) {
+            return false;
+        }
+        
+        // Check character distribution (basic entropy check)
+        $chars = count_chars($token, 1);
+        $uniqueChars = count($chars);
+        if ($uniqueChars < 8) { // Should have reasonable variety
+            return false;
+        }
+        
+        return true;
     }
 
     // Policy integration

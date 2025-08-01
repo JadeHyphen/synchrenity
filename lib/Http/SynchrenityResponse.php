@@ -127,14 +127,42 @@ class SynchrenityResponse
 
     protected function arrayToXml($data, $root = 'response')
     {
+        // Sanitize root element name
+        $root = preg_replace('/[^a-zA-Z0-9_-]/', '', $root);
+        if (empty($root)) {
+            $root = 'response';
+        }
+        
         $xml = new \SimpleXMLElement("<{$root}/>");
         $f   = function ($f, $data, $xml) {
             foreach ($data as $k => $v) {
+                // Sanitize element names
+                $elementName = is_numeric($k) ? 'item' : preg_replace('/[^a-zA-Z0-9_-]/', '', $k);
+                if (empty($elementName)) {
+                    $elementName = 'item';
+                }
+                
                 if (is_array($v)) {
-                    $child = $xml->addChild(is_numeric($k) ? 'item' : $k);
+                    $child = $xml->addChild($elementName);
                     $f($f, $v, $child);
                 } else {
-                    $xml->addChild(is_numeric($k) ? 'item' : $k, htmlspecialchars($v));
+                    // Properly escape content and handle different data types
+                    if (is_bool($v)) {
+                        $v = $v ? 'true' : 'false';
+                    } elseif (is_null($v)) {
+                        $v = '';
+                    } else {
+                        $v = (string) $v;
+                    }
+                    
+                    // Use CDATA for complex content, htmlspecialchars for simple content
+                    if (preg_match('/[&<>"\']+/', $v)) {
+                        $child = $xml->addChild($elementName);
+                        $dom = dom_import_simplexml($child);
+                        $dom->appendChild($dom->ownerDocument->createCDATASection($v));
+                    } else {
+                        $xml->addChild($elementName, htmlspecialchars($v, ENT_XML1 | ENT_QUOTES, 'UTF-8'));
+                    }
                 }
             }
         };
@@ -145,18 +173,88 @@ class SynchrenityResponse
 
     public function file($filePath, $downloadName = null, $inline = false)
     {
-        if (!file_exists($filePath)) {
+        // Security: Validate file path to prevent directory traversal
+        $realPath = realpath($filePath);
+        if ($realPath === false) {
             $this->setStatus(404)->setBody('File not found')->send();
-
             return;
         }
-        $this->setHeader('Content-Type', mime_content_type($filePath));
+        
+        // Ensure file is within allowed directory (basic check)
+        $allowedPaths = [
+            realpath($_SERVER['DOCUMENT_ROOT'] ?? '.'),
+            realpath(sys_get_temp_dir()),
+            realpath(__DIR__ . '/../../storage/files') // Example allowed path
+        ];
+        
+        $pathAllowed = false;
+        foreach ($allowedPaths as $allowedPath) {
+            if ($allowedPath !== false && strpos($realPath, $allowedPath) === 0) {
+                $pathAllowed = true;
+                break;
+            }
+        }
+        
+        if (!$pathAllowed) {
+            error_log("Attempted access to disallowed file path: " . $filePath);
+            $this->setStatus(403)->setBody('Access denied')->send();
+            return;
+        }
+        
+        if (!file_exists($realPath) || !is_readable($realPath)) {
+            $this->setStatus(404)->setBody('File not found')->send();
+            return;
+        }
+        
+        // Check file size to prevent memory exhaustion
+        $fileSize = filesize($realPath);
+        if ($fileSize === false || $fileSize > 100 * 1024 * 1024) { // 100MB limit
+            $this->setStatus(413)->setBody('File too large')->send();
+            return;
+        }
+        
+        $mimeType = mime_content_type($realPath);
+        if ($mimeType === false) {
+            $mimeType = 'application/octet-stream';
+        }
+        
+        // Sanitize download name
+        if ($downloadName !== null) {
+            $downloadName = preg_replace('/[^a-zA-Z0-9._-]/', '', basename($downloadName));
+            if (empty($downloadName)) {
+                $downloadName = 'download';
+            }
+        } else {
+            $downloadName = preg_replace('/[^a-zA-Z0-9._-]/', '', basename($realPath));
+            if (empty($downloadName)) {
+                $downloadName = 'download';
+            }
+        }
+        
+        $this->setHeader('Content-Type', $mimeType);
+        $this->setHeader('Content-Length', (string) $fileSize);
+        
         $disp = $inline ? 'inline' : 'attachment';
-        $this->setHeader('Content-Disposition', $disp . '; filename="' . basename($downloadName ?: $filePath) . '"');
-        $this->setBody(file_get_contents($filePath));
-        $this->metrics['file']++;
-        $this->triggerEvent('file');
-        $this->send();
+        $this->setHeader('Content-Disposition', $disp . '; filename="' . $downloadName . '"');
+        
+        // For large files, consider streaming instead of loading into memory
+        if ($fileSize > 10 * 1024 * 1024) { // 10MB threshold
+            $this->metrics['file']++;
+            $this->triggerEvent('file');
+            
+            $handle = fopen($realPath, 'rb');
+            if ($handle === false) {
+                $this->setStatus(500)->setBody('Error reading file')->send();
+                return;
+            }
+            
+            $this->stream($handle, 8192, true);
+        } else {
+            $this->setBody(file_get_contents($realPath));
+            $this->metrics['file']++;
+            $this->triggerEvent('file');
+            $this->send();
+        }
     }
 
     public function stream($resource, $chunkSize = 8192, $close = true)

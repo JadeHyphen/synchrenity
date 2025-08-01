@@ -24,7 +24,7 @@ class SynchrenityServiceContainerExt extends SynchrenityServiceContainer {
     public function getContext($k, $d=null) { return $this->context[$k] ?? $d; }
     public function keys() { return $this->serviceKeys; }
     public function register($id, $service) { $this->serviceKeys[] = $id; return parent::register($id, $service); }
-    public function singleton($id, $service) { $this->serviceKeys[] = $id; return parent::singleton($id, $service); }
+    public function singleton(string $id, callable $service): void { $this->serviceKeys[] = $id; parent::singleton($id, $service); }
     public function get($id) { $this->metrics['gets']++; $this->triggerEvent('get', $id); return parent::get($id); }
     public function reload() { $this->metrics['reloads']++; $this->triggerEvent('reload', $this->keys()); }
 }
