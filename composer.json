@@ -9,7 +9,7 @@
         "secure",
         "robust"
     ],
-    "type": "project",
+    "type": "library",
     "license": "MIT",
     "authors": [
         {
@@ -62,7 +62,8 @@
             "lib/Helpers/env.php",
             "lib/Helpers/array.php",
             "lib/Helpers/string.php",
-            "lib/Support/SynchrenityServiceContainer.php"
+            "lib/Support/SynchrenityServiceContainer.php",
+            "lib/Support/SynchrenityServiceProvider.php"
         ]
     },
     "autoload-dev": {

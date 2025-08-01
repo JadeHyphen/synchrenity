@@ -29,25 +29,83 @@ Synchrenity is a modern PHP framework inspired by Laravel's clean architecture a
 - **Configuration Management**: Dot notation access with environment-specific configs
 - **Error Handling**: Comprehensive error management with security awareness
 
-## Architecture Overview
+## Getting Started
 
-### Entry Point
-The framework uses a clean entry point (`index.php`) that contains minimal bootstrap code:
+### Installation
+Install Synchrenity in your application via Composer:
 
+```bash
+composer require synchrenity/framework
+```
+
+### Basic Application Setup
+Create your application structure:
+
+```
+my-app/
+├── public/
+│   └── index.php              # Your application entry point
+├── config/
+│   └── app.php                # Application configuration
+├── app/
+│   └── Controllers/           # Your application controllers
+└── composer.json              # Your application dependencies
+```
+
+**public/index.php** (Your application entry point):
 ```php
-// Clean 58-line entry point vs. previous 291-line bloated version
+<?php
+require_once '../vendor/autoload.php';
+
+$config = require '../config/app.php';
 $app = new \Synchrenity\SynchrenityApplication($config);
 $app->boot();
 $app->handleRequest();
 ```
 
-### Application Structure
+**config/app.php** (Your application configuration):
+```php
+<?php
+return [
+    'app' => [
+        'name' => 'My Application',
+        'env' => 'development',
+        'debug' => true,
+    ],
+    'security' => [
+        'encryption_key' => env('APP_KEY'),
+        'csrf_protection' => true,
+    ],
+];
+```
+
+## Architecture Overview
+
+### Framework Structure
+Synchrenity is a pure framework package that applications can use. Unlike monolithic frameworks, Synchrenity separates framework logic from application logic:
+
+```php
+// In your application's entry point (e.g., public/index.php)
+require_once 'vendor/autoload.php';
+
+$config = require 'config/app.php';
+$app = new \Synchrenity\SynchrenityApplication($config);
+$app->boot();
+$app->handleRequest();
+```
+
+### Framework Package Structure
 ```
 synchrenity/
-├── index.php                  # Clean entry point
-├── bootstrap/
-│   └── app.php                # Framework bootstrap
-├── config/                    # Configuration files
+├── lib/                       # Framework core classes
+│   ├── Support/               # Service container, facades, providers
+│   ├── Http/                  # HTTP handling
+│   ├── Security/              # Security components
+│   ├── Auth/                  # Authentication
+│   └── ...                    # Other framework components
+├── synchrenity                # CLI tool
+├── composer.json              # Package definition
+└── README.md                  # Documentation
 ├── lib/                       # Framework core
 │   ├── SynchrenityCore.php
 │   ├── SynchrenityApplication.php
