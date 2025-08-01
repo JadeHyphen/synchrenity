@@ -8,8 +8,8 @@ use Synchrenity\SynchrenityCommand;
 
 class SynchrenityMakeMigrationCommand extends SynchrenityCommand
 {
-    protected $name        = 'make:migration';
-    protected $description = 'Create a new migration file.';
+    protected string $name       = 'make:migration';
+    protected string $description = 'Create a new migration file.';
 
     public function __construct($kernel = null)
     {

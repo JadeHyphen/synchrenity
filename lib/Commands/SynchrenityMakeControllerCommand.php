@@ -8,14 +8,14 @@ use Synchrenity\SynchrenityCommand;
 
 class SynchrenityMakeControllerCommand extends SynchrenityCommand
 {
-    protected $name        = 'make:controller';
-    protected $description = 'Generate a new controller class.';
-    protected $usage       = 'make:controller <Name> [--resource] [--force]';
-    protected $options     = [
+    protected string $name       = 'make:controller';
+    protected string $description = 'Generate a new controller class.';
+    protected string $usage      = 'make:controller <Name> [--resource] [--force]';
+    protected array $options    = [
         'resource' => 'Generate a resource controller',
         'force'    => 'Overwrite if file exists',
     ];
-    protected $flags = [];
+    protected array $flags      = [];
 
     public function __construct($kernel = null)
     {

@@ -8,8 +8,8 @@ use Synchrenity\SynchrenityCommand;
 
 class SynchrenityMigrationStatusCommand extends SynchrenityCommand
 {
-    protected $name        = 'migration:status';
-    protected $description = 'Show migration status.';
+    protected string $name       = 'migration:status';
+    protected string $description = 'Show migration status.';
 
     public function __construct($kernel = null)
     {

@@ -1,0 +1,60 @@
+#!/usr/bin/env php
+<?php
+
+/**
+ * Synchrenity Global CLI Tool
+ * 
+ * This is the global installer for Synchrenity applications.
+ * Usage: synchrenity new <project-name>
+ */
+
+// Check if running from global installation
+$autoloadPaths = [
+    __DIR__ . '/../../../autoload.php', // Global composer install
+    __DIR__ . '/../vendor/autoload.php', // Local composer install  
+    __DIR__ . '/../../vendor/autoload.php', // When in vendor/synchrenity/installer
+    __DIR__ . '/vendor/autoload.php' // Development
+];
+
+$autoloadFound = false;
+foreach ($autoloadPaths as $autoloadPath) {
+    if (file_exists($autoloadPath)) {
+        require_once $autoloadPath;
+        $autoloadFound = true;
+        break;
+    }
+}
+
+if (!$autoloadFound) {
+    echo "Error: Autoloader not found. Please run 'composer install' or install globally with 'composer global require synchrenity/installer'\n";
+    exit(1);
+}
+
+use Synchrenity\Installer\NewCommand;
+use Symfony\Component\Console\Application;
+use Symfony\Component\Console\Input\ArgvInput;
+use Symfony\Component\Console\Output\ConsoleOutput;
+
+// Create console application
+$application = new Application('Synchrenity Installer', '1.0.0');
+
+// Register the new command
+$application->add(new NewCommand());
+
+// Set the default command to 'new' if no command is specified
+$input = new ArgvInput();
+if (count($argv) > 1 && !in_array($argv[1], ['help', 'list', '--help', '-h', '--version', '-V'])) {
+    // If first argument is not a known command, assume it's 'new <project-name>'
+    if (!$application->has($argv[1])) {
+        array_splice($argv, 1, 0, 'new');
+        $input = new ArgvInput($argv);
+    }
+}
+
+// Run the application
+try {
+    $application->run($input, new ConsoleOutput());
+} catch (Exception $e) {
+    echo "Error: " . $e->getMessage() . "\n";
+    exit(1);
+}

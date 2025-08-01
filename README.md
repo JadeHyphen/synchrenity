@@ -57,6 +57,24 @@ $result = $oauth2->handleCallback('google', $_GET['code'], $_GET['state']);
 ## Quick Start
 See [API Documentation](docs/API.md) and [Usage Guide](docs/USAGE_GUIDE.md) for more details.
 
+### Option 1: Global Installation (Recommended)
+
+Install the Synchrenity installer globally:
+```sh
+composer global require synchrenity/installer
+```
+
+Create a new application:
+```sh
+synchrenity new my-app
+cd my-app
+composer install
+php synchrenity migrate
+php synchrenity seed
+```
+
+### Option 2: Clone Repository
+
 1. **Clone the repository:**
    ```sh
    git clone https://github.com/JadeHyphen/synchrenity.git
@@ -225,13 +243,21 @@ Synchrenity features a robust, colorized CLI for developer productivity:
 - Command suggestion for mistyped commands
 - Scaffolding commands: `make:controller`, `make:model`
 - `optimize` command: runs Composer autoloader optimization and clears cache
+- **`new` command: create new Synchrenity applications (like Laravel's `laravel new`)**
 
 **Usage:**
 ```sh
 php synchrenity help         # Show colorized help and available commands
+php synchrenity new my-app   # Create a new Synchrenity application
 php synchrenity make:controller UserController
 php synchrenity make:model User
 php synchrenity optimize    # Optimize autoloader and clear cache
+```
+
+**Global Usage:**
+```sh
+composer global require synchrenity/installer
+synchrenity new my-app      # Create applications from anywhere
 ```
 
 **Example colorized help output:**

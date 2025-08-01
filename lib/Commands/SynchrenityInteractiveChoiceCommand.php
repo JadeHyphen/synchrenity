@@ -9,11 +9,11 @@ use Synchrenity\SynchrenityKernel;
 
 class SynchrenityInteractiveChoiceCommand extends SynchrenityCommand
 {
-    protected $name        = 'interactive:choice';
-    protected $description = 'Prompt user to select from multiple choices.';
-    protected $usage       = 'interactive:choice <question> [choices...]';
-    protected $options     = [];
-    protected $flags       = [];
+    protected string $name       = 'interactive:choice';
+    protected string $description = 'Prompt user to select from multiple choices.';
+    protected string $usage      = 'interactive:choice <question> [choices...]';
+    protected array $options    = [];
+    protected array $flags      = [];
 
     public function __construct($kernel = null)
     {

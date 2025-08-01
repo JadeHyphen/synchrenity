@@ -8,8 +8,8 @@ use Synchrenity\SynchrenityCommand;
 
 class SynchrenityMigrateCommand extends SynchrenityCommand
 {
-    protected $name        = 'migrate';
-    protected $description = 'Run database migrations.';
+    protected string $name       = 'migrate';
+    protected string $description = 'Run database migrations.';
 
     public function __construct($kernel = null)
     {
