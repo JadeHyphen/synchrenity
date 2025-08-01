@@ -8,6 +8,11 @@ use Synchrenity\Support\SynchrenityEventDispatcher;
 use Synchrenity\Support\SynchrenityMiddlewareManager;
 use Synchrenity\Security\SynchrenitySecurityManager;
 use Synchrenity\Support\SynchrenityLogger;
+use Synchrenity\Support\SynchrenityServiceContainer;
+use Synchrenity\Support\SynchrenityConfigManager;
+use Synchrenity\Support\SynchrenityCoreServiceProvider;
+use Synchrenity\Support\SynchrenitySecurityServiceProvider;
+use Synchrenity\Support\SynchrenityHttpServiceProvider;
 use Synchrenity\API\SynchrenityApiRateLimiter;
 use Synchrenity\Http\SynchrenityRequest;
 use Synchrenity\Http\SynchrenityResponse;
@@ -23,19 +28,63 @@ class SynchrenityApplication
     protected SynchrenityEventDispatcher $eventDispatcher;
     protected SynchrenityMiddlewareManager $middlewareManager;
     protected SynchrenitySecurityManager $securityManager;
+    protected SynchrenityServiceContainer $container;
+    protected SynchrenityConfigManager $configManager;
     protected ?SynchrenityApiRateLimiter $rateLimiter = null;
     protected array $config = [];
     protected bool $isBooted = false;
     protected array $errorHandlers = [];
+    protected array $serviceProviders = [];
 
     public function __construct(array $config = [])
     {
         $this->config = $config;
         $this->setupErrorHandling();
+        $this->initializeContainer();
+        $this->initializeConfig();
+        $this->registerServiceProviders();
         $this->initializeCore();
         $this->setupSecurity();
         $this->setupMiddleware();
         $this->setupRateLimiting();
+    }
+
+    /**
+     * Initialize the service container
+     */
+    protected function initializeContainer(): void
+    {
+        $this->container = new SynchrenityServiceContainer();
+        $GLOBALS['synchrenityContainer'] = $this->container;
+    }
+
+    /**
+     * Initialize configuration management
+     */
+    protected function initializeConfig(): void
+    {
+        $this->configManager = new SynchrenityConfigManager();
+        $this->configManager->merge($this->config);
+        
+        // Register config in container
+        $this->container->instance('config', $this->configManager);
+    }
+
+    /**
+     * Register core service providers
+     */
+    protected function registerServiceProviders(): void
+    {
+        $providers = [
+            new SynchrenityCoreServiceProvider($this->container),
+            new SynchrenitySecurityServiceProvider($this->container),
+            new SynchrenityHttpServiceProvider($this->container),
+        ];
+
+        foreach ($providers as $provider) {
+            $provider->register();
+            $this->serviceProviders[] = $provider;
+        }
     }
 
     /**
@@ -72,8 +121,12 @@ class SynchrenityApplication
      */
     protected function initializeCore(): void
     {
-        $this->core = new SynchrenityCore($this->config);
+        $this->core = new SynchrenityCore($this->configManager->all());
         $this->eventDispatcher = new SynchrenityEventDispatcher();
+        
+        // Register core in container
+        $this->container->instance('core', $this->core);
+        $this->container->instance('events', $this->eventDispatcher);
         
         // Set up core components
         if (method_exists($this->core, 'setEventDispatcher')) {
@@ -86,13 +139,8 @@ class SynchrenityApplication
      */
     protected function setupSecurity(): void
     {
-        $this->securityManager = new SynchrenitySecurityManager([
-            'encryption_key' => $this->config['security']['encryption_key'] ?? 
-                              getenv('SYNCHRENITY_KEY') ?: 
-                              bin2hex(random_bytes(32)),
-            'hasher' => $this->config['security']['hasher'] ?? 'bcrypt'
-        ]);
-
+        $this->securityManager = $this->container->get('security');
+        
         // Set security headers
         $this->setSecurityHeaders();
         
@@ -106,7 +154,7 @@ class SynchrenityApplication
      */
     protected function setupMiddleware(): void
     {
-        $this->middlewareManager = new SynchrenityMiddlewareManager();
+        $this->middlewareManager = $this->container->get('middleware');
         
         // Integrate systems
         $this->middlewareManager->attachToDispatcher($this->eventDispatcher);
@@ -231,6 +279,16 @@ class SynchrenityApplication
         if ($this->isBooted) {
             return;
         }
+
+        // Boot service providers
+        foreach ($this->serviceProviders as $provider) {
+            if (method_exists($provider, 'boot')) {
+                $provider->boot();
+            }
+        }
+
+        // Boot container
+        $this->container->boot();
 
         // Register lifecycle hooks
         $this->registerLifecycleHooks();
@@ -553,20 +611,41 @@ class SynchrenityApplication
     public function getConfig(string $key = null, $default = null)
     {
         if ($key === null) {
-            return $this->config;
+            return $this->configManager->all();
         }
         
-        $segments = explode('.', $key);
-        $value = $this->config;
-        
-        foreach ($segments as $segment) {
-            if (is_array($value) && array_key_exists($segment, $value)) {
-                $value = $value[$segment];
-            } else {
-                return $default;
-            }
-        }
-        
-        return $value;
+        return $this->configManager->get($key, $default);
+    }
+
+    /**
+     * Get the service container
+     */
+    public function getContainer(): SynchrenityServiceContainer
+    {
+        return $this->container;
+    }
+
+    /**
+     * Get service from container
+     */
+    public function make(string $service)
+    {
+        return $this->container->get($service);
+    }
+
+    /**
+     * Register a service in the container
+     */
+    public function bind(string $name, callable $factory): void
+    {
+        $this->container->bind($name, $factory);
+    }
+
+    /**
+     * Register a singleton in the container
+     */
+    public function singleton(string $name, callable $factory): void
+    {
+        $this->container->singleton($name, $factory);
     }
 }
