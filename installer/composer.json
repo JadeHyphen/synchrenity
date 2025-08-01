@@ -1,0 +1,48 @@
+{
+    "name": "synchrenity/installer",
+    "description": "Global installer for Synchrenity applications - create new projects with synchrenity new command",
+    "keywords": [
+        "framework",
+        "php",
+        "synchrenity",
+        "installer",
+        "scaffold",
+        "cli"
+    ],
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Jade Monathrae Lewis",
+            "email": "communitybladers1@gmail.com",
+            "role": "Founder"
+        }
+    ],
+    "require": {
+        "php": ">=8.2",
+        "ext-json": "*",
+        "symfony/console": "^6.4",
+        "symfony/filesystem": "^6.4",
+        "symfony/process": "^6.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "Synchrenity\\Installer\\": "src/"
+        }
+    },
+    "bin": [
+        "bin/synchrenity"
+    ],
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true,
+        "preferred-install": "dist"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "homepage": "https://github.com/JadeHyphen/synchrenity",
+    "support": {
+        "issues": "https://github.com/JadeHyphen/synchrenity/issues",
+        "source": "https://github.com/JadeHyphen/synchrenity"
+    }
+}

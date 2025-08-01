@@ -9,8 +9,8 @@ use Synchrenity\SynchrenityKernel;
 
 class SynchrenityListCommand extends SynchrenityCommand
 {
-    protected $name        = 'list';
-    protected $description = 'List all available commands.';
+    protected string $name        = 'list';
+    protected string $description = 'List all available commands.';
     protected $kernel;
     public function __construct($kernel = null)
     {

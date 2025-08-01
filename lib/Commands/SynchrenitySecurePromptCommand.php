@@ -9,11 +9,11 @@ use Synchrenity\SynchrenityKernel;
 
 class SynchrenitySecurePromptCommand extends SynchrenityCommand
 {
-    protected $name        = 'secure:prompt';
-    protected $description = 'Prompt for secure input (e.g., password)';
-    protected $usage       = 'secure:prompt <label>';
-    protected $options     = [];
-    protected $flags       = [];
+    protected string $name       = 'secure:prompt';
+    protected string $description = 'Prompt for secure input (e.g., password)';
+    protected string $usage      = 'secure:prompt <label>';
+    protected array $options    = [];
+    protected array $flags      = [];
 
     public function __construct($kernel = null)
     {

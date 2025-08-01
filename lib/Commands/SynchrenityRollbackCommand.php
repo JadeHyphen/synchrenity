@@ -8,8 +8,8 @@ use Synchrenity\SynchrenityCommand;
 
 class SynchrenityRollbackCommand extends SynchrenityCommand
 {
-    protected $name        = 'rollback';
-    protected $description = 'Rollback the last database migration.';
+    protected string $name       = 'rollback';
+    protected string $description = 'Rollback the last database migration.';
 
     public function __construct($kernel = null)
     {

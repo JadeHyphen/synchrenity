@@ -9,8 +9,8 @@ namespace Synchrenity\Commands;
  */
 class SynchrenityOptimizeCommand extends \Synchrenity\SynchrenityCommand
 {
-    protected $name        = 'optimize';
-    protected $description = 'Check for dependency errors, missing packages, and common bugs.';
+    protected string $name       = 'optimize';
+    protected string $description = 'Check for dependency errors, missing packages, and common bugs.';
 
     public function handle(array $args, array $options, array $flags)
     {

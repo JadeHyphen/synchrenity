@@ -83,7 +83,8 @@
     "prefer-stable": true,
     "scripts": {
         "optimize": "php synchrenity optimize",
-        "version-bump": "php synchrenity version bump"
+        "version-bump": "php synchrenity version bump",
+        "new": "php synchrenity new"
     },
     "bin": [
         "synchrenity"

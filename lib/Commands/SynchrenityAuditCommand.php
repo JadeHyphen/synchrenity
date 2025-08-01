@@ -8,11 +8,11 @@ use Synchrenity\SynchrenityCommand;
 
 class SynchrenityAuditCommand extends SynchrenityCommand
 {
-    protected $name        = 'security:audit';
-    protected $description = 'Run a security audit on your Synchrenity project.';
-    protected $usage       = 'security:audit';
-    protected $options     = [];
-    protected $flags       = [];
+    protected string $name       = 'security:audit';
+    protected string $description = 'Run a security audit on your Synchrenity project.';
+    protected string $usage      = 'security:audit';
+    protected array $options    = [];
+    protected array $flags      = [];
 
     public function __construct($kernel = null)
     {
