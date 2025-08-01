@@ -2,6 +2,10 @@
 # Synchrenity .gitignore (pushed to the modern limit)
 # Secure, robust, and cross-platform ignores for PHP, CI, devops, and editors
 
+# --- Old files from refactoring ---
+bootstrap/app_old.php
+public/index.php
+
 # --- Environment & Secrets ---
 .env
 .env.*

@@ -140,19 +140,49 @@ class SynchrenitySecurityManager
     }
 
     /**
-     * Encrypt data
+     * Encrypt data with proper IV generation
      */
     public function encrypt($data)
     {
-        return openssl_encrypt($data, 'AES-256-CBC', $this->encryptionKey, 0, substr($this->encryptionKey, 0, 16));
+        if (empty($data)) {
+            throw new \InvalidArgumentException('Data to encrypt cannot be empty');
+        }
+        
+        $iv = random_bytes(16); // Generate random IV for each encryption
+        $encrypted = openssl_encrypt($data, 'AES-256-CBC', $this->encryptionKey, 0, $iv);
+        
+        if ($encrypted === false) {
+            throw new \RuntimeException('Encryption failed');
+        }
+        
+        // Prepend IV to encrypted data
+        return base64_encode($iv . $encrypted);
     }
 
     /**
-     * Decrypt data
+     * Decrypt data with proper IV extraction
      */
     public function decrypt($data)
     {
-        return openssl_decrypt($data, 'AES-256-CBC', $this->encryptionKey, 0, substr($this->encryptionKey, 0, 16));
+        if (empty($data)) {
+            throw new \InvalidArgumentException('Data to decrypt cannot be empty');
+        }
+        
+        $data = base64_decode($data);
+        if ($data === false || strlen($data) < 16) {
+            throw new \InvalidArgumentException('Invalid encrypted data format');
+        }
+        
+        $iv = substr($data, 0, 16); // Extract IV from beginning
+        $encrypted = substr($data, 16); // Get encrypted portion
+        
+        $decrypted = openssl_decrypt($encrypted, 'AES-256-CBC', $this->encryptionKey, 0, $iv);
+        
+        if ($decrypted === false) {
+            throw new \RuntimeException('Decryption failed');
+        }
+        
+        return $decrypted;
     }
 
     /**
@@ -177,31 +207,114 @@ class SynchrenitySecurityManager
     }
 
     /**
-     * Validate and sanitize input
+     * Validate and sanitize input with security defaults
      */
     public function validate($type, $value)
     {
-        return isset($this->validators[$type]) ? $this->validators[$type]->validate($value) : true;
+        if (isset($this->validators[$type])) {
+            return $this->validators[$type]->validate($value);
+        }
+        
+        // Default validation based on type
+        switch ($type) {
+            case 'email':
+                return filter_var($value, FILTER_VALIDATE_EMAIL) !== false;
+            case 'url':
+                return filter_var($value, FILTER_VALIDATE_URL) !== false;
+            case 'int':
+                return filter_var($value, FILTER_VALIDATE_INT) !== false;
+            case 'float':
+                return filter_var($value, FILTER_VALIDATE_FLOAT) !== false;
+            case 'ip':
+                return filter_var($value, FILTER_VALIDATE_IP) !== false;
+            default:
+                return is_string($value) && strlen($value) <= 10000; // Basic length check
+        }
     }
+    
     public function sanitize($type, $value)
     {
-        return isset($this->sanitizers[$type]) ? $this->sanitizers[$type]->sanitize($value) : $value;
+        if (isset($this->sanitizers[$type])) {
+            return $this->sanitizers[$type]->sanitize($value);
+        }
+        
+        // Default sanitization with security focus
+        if (!is_string($value)) {
+            return $value;
+        }
+        
+        switch ($type) {
+            case 'html':
+                return htmlspecialchars($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            case 'sql':
+                return addslashes($value);
+            case 'filename':
+                return preg_replace('/[^a-zA-Z0-9_.-]/', '', basename($value));
+            case 'path':
+                // Prevent directory traversal
+                $value = str_replace(['../', '.\\', '..\\'], '', $value);
+                return preg_replace('/[^a-zA-Z0-9\/_.-]/', '', $value);
+            default:
+                return htmlspecialchars($value, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        }
     }
 
     /**
-     * CSRF/XSS/SQLi protection hooks
+     * CSRF/XSS/SQLi protection hooks with improved security
      */
     public function protectCSRF($token)
     {
-        return $this->csrfProtector ? $this->csrfProtector->validate($token) : true;
+        if (!$this->csrfProtector) {
+            error_log('[Security Warning] CSRF protector not configured');
+            return false; // Fail secure
+        }
+        return $this->csrfProtector->validate($token);
     }
+    
     public function protectXSS($input)
     {
-        return $this->xssProtector ? $this->xssProtector->sanitize($input) : htmlspecialchars($input, ENT_QUOTES);
+        if ($this->xssProtector) {
+            return $this->xssProtector->sanitize($input);
+        }
+        
+        // Enhanced XSS protection
+        if (!is_string($input)) {
+            return $input;
+        }
+        
+        // Remove potentially dangerous tags and attributes
+        $input = preg_replace('/<script[^>]*>.*?<\/script>/is', '', $input);
+        $input = preg_replace('/on\w+\s*=\s*["\'].*?["\']/i', '', $input);
+        $input = preg_replace('/javascript:/i', '', $input);
+        $input = preg_replace('/vbscript:/i', '', $input);
+        
+        return htmlspecialchars($input, ENT_QUOTES | ENT_HTML5, 'UTF-8');
     }
+    
     public function protectSQLi($input)
     {
-        return $this->sqliProtector ? $this->sqliProtector->sanitize($input) : addslashes($input);
+        if ($this->sqliProtector) {
+            return $this->sqliProtector->sanitize($input);
+        }
+        
+        // Enhanced SQL injection protection
+        if (!is_string($input)) {
+            return $input;
+        }
+        
+        // Remove common SQL injection patterns
+        $patterns = [
+            '/(\b(SELECT|INSERT|UPDATE|DELETE|DROP|CREATE|ALTER|EXEC)\b)/i',
+            '/(\b(UNION|OR|AND)\s+\d+\s*=\s*\d+)/i',
+            '/(--|\#|\/\*|\*\/)/i',
+            '/(\b(SCRIPT|JAVASCRIPT|VBSCRIPT)\b)/i'
+        ];
+        
+        foreach ($patterns as $pattern) {
+            $input = preg_replace($pattern, '', $input);
+        }
+        
+        return addslashes(trim($input));
     }
 
     /**
